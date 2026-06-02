@@ -1,10 +1,17 @@
 "use client";
 
 import { signIn, useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import {
+  buildOnboardingDiscordCallbackUrl,
+  storeOnboardingRef,
+} from "@/lib/onboarding-referral";
+import { formatReferralCodeInput } from "@/lib/referral-code";
 
 export function DiscordConnectButton() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
 
   if (status === "loading") {
     return (
@@ -24,11 +31,17 @@ export function DiscordConnectButton() {
 
   return (
     <Button
-      onClick={() =>
+      onClick={() => {
+        const ref = formatReferralCodeInput(searchParams.get("ref") ?? "");
+        if (ref) storeOnboardingRef(ref);
+
         signIn("discord", {
-          callbackUrl: "/onboarding?discord=connected",
-        })
-      }
+          callbackUrl: buildOnboardingDiscordCallbackUrl({
+            ref,
+            callbackUrl: searchParams.get("callbackUrl"),
+          }),
+        });
+      }}
     >
       Connect Discord
     </Button>

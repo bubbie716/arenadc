@@ -961,6 +961,9 @@ function SettingsTab({
     { key: "fight_creation_enabled", label: "Fight creation enabled (true/false)" },
     { key: "withdrawals_enabled", label: "Withdrawals enabled (true/false)" },
     { key: "maintenance_mode", label: "Maintenance mode (true/false)" },
+    { key: "referrals_enabled", label: "Referrals enabled (true/false)" },
+    { key: "referral_new_user_bonus", label: "Referral bonus — new user (RMD)" },
+    { key: "referral_referrer_bonus", label: "Referral bonus — referrer (RMD)" },
   ];
 
   return (

@@ -12,6 +12,7 @@ const baseNavLinks = [
   { href: "/", label: "Home" },
   { href: "/schedule", label: "Schedule" },
   { href: "/wallet", label: "Wallet" },
+  { href: "/referrals", label: "Referrals" },
   { href: "/profile", label: "Profile" },
 ];
 

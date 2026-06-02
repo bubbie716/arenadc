@@ -48,7 +48,9 @@ export type NotificationType =
   | "wallet_frozen"
   | "wallet_unfrozen"
   | "account_suspended"
-  | "account_unsuspended";
+  | "account_unsuspended"
+  | "referral_bonus_received"
+  | "referral_bonus_earned";
 
 export interface AppNotification {
   id: string;
@@ -201,7 +203,8 @@ export type TransactionType =
   | "fee"
   | "platform_fee"
   | "refund"
-  | "admin_adjustment";
+  | "admin_adjustment"
+  | "referral_bonus";
 
 export type WalletRequestStatus = "pending" | "approved" | "rejected" | "paid";
 

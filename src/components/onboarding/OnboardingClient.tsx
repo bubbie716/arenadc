@@ -18,7 +18,14 @@ import {
 import { ArenaMCLogo } from "@/components/ArenaMCLogo";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
+import { cn, formatRmd } from "@/lib/utils";
+import {
+  buildOnboardingDiscordCallbackUrl,
+  clearStoredOnboardingRef,
+  readStoredOnboardingRef,
+  storeOnboardingRef,
+} from "@/lib/onboarding-referral";
+import { formatReferralCodeInput } from "@/lib/referral-code";
 
 const STEPS = [
   { id: 1, title: "Connect Discord" },
@@ -33,6 +40,9 @@ interface OnboardingClientProps {
     minecraftUsername: string | null;
     rulesAccepted: boolean;
     onboardingComplete: boolean;
+    referralsEnabled: boolean;
+    referralNewUserBonus: number;
+    referralReferrerBonus: number;
   };
 }
 
@@ -48,10 +58,26 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
   const [legalAccepted, setLegalAccepted] = useState(() =>
     legalAgreementsFromRulesAccepted(initial.rulesAccepted),
   );
+  const [referralCode, setReferralCode] = useState(() =>
+    formatReferralCodeInput(searchParams.get("ref") ?? ""),
+  );
 
   const discordConnected = Boolean(session?.user?.dbUserId) || state.discordConnected;
   const allLegalAccepted =
     state.rulesAccepted || allLegalAgreementsAccepted(legalAccepted);
+
+  useEffect(() => {
+    const refFromUrl = searchParams.get("ref");
+    if (refFromUrl) {
+      const formatted = formatReferralCodeInput(refFromUrl);
+      setReferralCode(formatted);
+      storeOnboardingRef(formatted);
+      return;
+    }
+
+    const storedRef = readStoredOnboardingRef();
+    if (storedRef) setReferralCode(storedRef);
+  }, [searchParams]);
 
   useEffect(() => {
     if (searchParams.get("discord") === "connected" && discordConnected) {
@@ -123,6 +149,14 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
       </div>
 
       <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+        {currentStep > 1 && (
+          <div className="-ml-2 -mt-1 mb-2">
+            <Button variant="ghost" onClick={() => goToStep(currentStep - 1)}>
+              Back
+            </Button>
+          </div>
+        )}
+
         {currentStep === 1 && (
           <>
             <h2 className="text-2xl font-bold">Connect Discord</h2>
@@ -138,9 +172,19 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
               <Button
                 className="mt-6"
                 disabled={status === "loading" || pending}
-                onClick={() =>
-                  signIn("discord", { callbackUrl: "/onboarding?discord=connected" })
-                }
+                onClick={() => {
+                  const ref =
+                    formatReferralCodeInput(searchParams.get("ref") ?? "") ||
+                    referralCode;
+                  if (ref) storeOnboardingRef(ref);
+
+                  signIn("discord", {
+                    callbackUrl: buildOnboardingDiscordCallbackUrl({
+                      ref,
+                      callbackUrl: searchParams.get("callbackUrl"),
+                    }),
+                  });
+                }}
               >
                 Connect Discord
               </Button>
@@ -212,25 +256,44 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
         )}
 
         {currentStep === 4 && (
-          <>
-            <div className="flex justify-center">
-              <ArenaMCLogo size="lg" />
-            </div>
+          <div className="flex flex-col items-center text-center">
+            <ArenaMCLogo size="lg" />
             <h2 className="mt-6 text-2xl font-bold">Enter ArenaMC</h2>
-            <p className="mt-3 text-muted">
+            <p className="mt-3 max-w-md text-muted">
               You are ready to schedule fights. Deposit RMD from your wallet when you are ready to
               wager.
             </p>
+            {initial.referralsEnabled && (
+              <div className="mt-6 flex flex-col items-center">
+                <label htmlFor="referral-code" className="mb-2 text-sm font-medium">
+                  Referral code <span className="font-normal text-muted">(optional)</span>
+                </label>
+                <input
+                  id="referral-code"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(formatReferralCodeInput(e.target.value))}
+                  placeholder="XXXX-XXXX"
+                  maxLength={9}
+                  className="w-44 rounded-xl border border-border bg-surface-elevated px-3 py-2 text-center font-mono text-sm uppercase tracking-[0.2em] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                />
+                <p className="mt-2 max-w-sm text-xs text-muted">
+                  You earn {formatRmd(initial.referralNewUserBonus)} and your referrer earns{" "}
+                  {formatRmd(initial.referralReferrerBonus)} when you finish setup.
+                </p>
+              </div>
+            )}
             <Button
               className="mt-6"
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  const res = await completeOnboarding();
+                  const res = await completeOnboarding(
+                    referralCode.trim() || undefined,
+                  );
                   if (!res.ok) setError(res.error);
                   else {
+                    clearStoredOnboardingRef();
                     setState((s) => ({ ...s, onboardingComplete: true }));
-                    router.push("/");
                     router.refresh();
                   }
                 })
@@ -238,17 +301,18 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
             >
               Enter ArenaMC
             </Button>
-          </>
+          </div>
         )}
 
         {error && (
-          <p className="mt-4 rounded-lg bg-danger/10 px-4 py-2 text-sm text-danger">{error}</p>
-        )}
-
-        {currentStep > 1 && (
-          <Button variant="ghost" className="mt-4" onClick={() => goToStep(currentStep - 1)}>
-            Back
-          </Button>
+          <p
+            className={cn(
+              "mt-4 rounded-lg bg-danger/10 px-4 py-2 text-sm text-danger",
+              currentStep === 4 && "text-center",
+            )}
+          >
+            {error}
+          </p>
         )}
       </div>
     </PageShell>

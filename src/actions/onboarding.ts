@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  ReferralError,
+  completeOnboardingWithReferral,
+} from "@/server/referrals";
+import { getResolvedPlatformSettings } from "@/server/platform-settings";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -56,37 +61,40 @@ export async function acceptFightRules(): Promise<ActionResult> {
   return acceptLegalAgreements();
 }
 
-export async function completeOnboarding(): Promise<ActionResult> {
+export async function completeOnboarding(referralCode?: string): Promise<ActionResult> {
   const userId = await getDbUserId();
   if (!userId) return { ok: false, error: "Sign in with Discord first." };
 
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-
-  if (!user.minecraftUsername) {
-    return { ok: false, error: "Link your Minecraft username first." };
+  try {
+    await completeOnboardingWithReferral(userId, referralCode);
+  } catch (e) {
+    if (e instanceof ReferralError) {
+      return { ok: false, error: e.message };
+    }
+    return { ok: false, error: "Could not complete onboarding." };
   }
-  if (!user.rulesAcceptedAt) {
-    return { ok: false, error: "Accept all legal agreements first." };
-  }
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { onboardingComplete: true },
-  });
 
   revalidatePath("/onboarding");
   revalidatePath("/");
+  revalidatePath("/wallet");
+  revalidatePath("/referrals");
+  revalidatePath("/admin");
   return { ok: true };
 }
 
 export async function getOnboardingState() {
   const userId = await getDbUserId();
+  const platformSettings = await getResolvedPlatformSettings();
+
   if (!userId) {
     return {
       discordConnected: false,
       minecraftUsername: null,
       rulesAccepted: false,
       onboardingComplete: false,
+      referralsEnabled: platformSettings.referralsEnabled,
+      referralNewUserBonus: platformSettings.referralNewUserBonus,
+      referralReferrerBonus: platformSettings.referralReferrerBonus,
     };
   }
 
@@ -96,5 +104,8 @@ export async function getOnboardingState() {
     minecraftUsername: user.minecraftUsername,
     rulesAccepted: Boolean(user.rulesAcceptedAt),
     onboardingComplete: user.onboardingComplete,
+    referralsEnabled: platformSettings.referralsEnabled,
+    referralNewUserBonus: platformSettings.referralNewUserBonus,
+    referralReferrerBonus: platformSettings.referralReferrerBonus,
   };
 }

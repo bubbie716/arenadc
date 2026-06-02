@@ -106,6 +106,7 @@ function mapWalletTxType(type: WalletTransactionType): Transaction["type"] {
     PLATFORM_FEE: "platform_fee",
     REFUND: "refund",
     ADMIN_ADJUSTMENT: "admin_adjustment",
+    REFERRAL_BONUS: "referral_bonus",
   };
   return map[type] ?? "deposit";
 }

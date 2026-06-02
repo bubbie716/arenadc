@@ -41,6 +41,7 @@ enum WalletTransactionType {
   WAGER_LOSS
   REFUND
   ADMIN_ADJUSTMENT
+  REFERRAL_BONUS
   WITHDRAW
   FEE
 }
@@ -97,6 +98,8 @@ enum NotificationType {
   WALLET_UNFROZEN
   ACCOUNT_SUSPENDED
   ACCOUNT_UNSUSPENDED
+  REFERRAL_BONUS_RECEIVED
+  REFERRAL_BONUS_EARNED
 }
 
 model User {
@@ -112,6 +115,8 @@ model User {
   walletFrozen       Boolean   @default(false)
   suspendedAt        DateTime?
   notificationsMuted Boolean   @default(false)
+  referralCode            String?   @unique
+  referralCodeLockedUntil DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -130,6 +135,21 @@ model User {
   evidenceReviews     EvidenceSubmission[] @relation("EvidenceReviewer")
   notifications       Notification[]
   communityVotes      FightCommunityVote[]
+  referralsMade       ReferralRedemption[] @relation("ReferralReferrer")
+  referralReceived    ReferralRedemption?  @relation("ReferralReferred")
+}
+
+model ReferralRedemption {
+  id             String   @id @default(cuid())
+  referrerId     String
+  referrer       User     @relation("ReferralReferrer", fields: [referrerId], references: [id])
+  referredUserId String   @unique
+  referredUser   User     @relation("ReferralReferred", fields: [referredUserId], references: [id])
+  newUserBonus   Int
+  referrerBonus  Int
+  createdAt      DateTime @default(now())
+
+  @@index([referrerId])
 }
 
 model Arena {

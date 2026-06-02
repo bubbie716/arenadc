@@ -45,6 +45,7 @@ export async function adminUpdatePlatformSettings(
     revalidatePath("/");
     revalidatePath("/schedule");
     revalidatePath("/wallet");
+    revalidatePath("/referrals");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: adminErrorMessage(e) };

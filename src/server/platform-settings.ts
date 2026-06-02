@@ -11,6 +11,9 @@ export type ResolvedPlatformSettings = {
   fightCreationEnabled: boolean;
   withdrawalsEnabled: boolean;
   maintenanceMode: boolean;
+  referralsEnabled: boolean;
+  referralNewUserBonus: number;
+  referralReferrerBonus: number;
 };
 
 const DEFAULT_DISCORD_INVITE = "https://discord.gg/arenamc";
@@ -43,6 +46,14 @@ function parseFeePercent(value: string): number {
   return parsed;
 }
 
+function parseNonNegativeInt(value: string, fallback: number): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
 export async function getResolvedPlatformSettings(): Promise<ResolvedPlatformSettings> {
   const raw = await getRawSettings();
   const depositAccountName = raw.deposit_account_name.trim() || "ArenaMC";
@@ -55,6 +66,9 @@ export async function getResolvedPlatformSettings(): Promise<ResolvedPlatformSet
     fightCreationEnabled: parseSettingBool(raw.fight_creation_enabled),
     withdrawalsEnabled: parseSettingBool(raw.withdrawals_enabled),
     maintenanceMode: parseSettingBool(raw.maintenance_mode),
+    referralsEnabled: parseSettingBool(raw.referrals_enabled),
+    referralNewUserBonus: parseNonNegativeInt(raw.referral_new_user_bonus, 100),
+    referralReferrerBonus: parseNonNegativeInt(raw.referral_referrer_bonus, 100),
   };
 }
 

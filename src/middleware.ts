@@ -2,7 +2,7 @@ import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/schedule", "/wallet", "/profile", "/admin"];
+const PROTECTED_PREFIXES = ["/schedule", "/wallet", "/referrals", "/profile", "/admin"];
 
 function authSecret() {
   return process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;

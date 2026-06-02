@@ -26,6 +26,7 @@ const txTypeLabels: Record<string, string> = {
   platform_fee: "Platform Fee",
   refund: "Refund",
   admin_adjustment: "Admin Adjustment",
+  referral_bonus: "Referral Bonus",
 };
 
 const txTypeColors: Record<string, string> = {
@@ -41,6 +42,7 @@ const txTypeColors: Record<string, string> = {
   platform_fee: "text-danger",
   refund: "text-blue",
   admin_adjustment: "text-accent-hover",
+  referral_bonus: "text-success",
 };
 
 export function WalletClient(props: WalletPageData) {
