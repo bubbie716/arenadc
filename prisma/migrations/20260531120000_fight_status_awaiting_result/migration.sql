@@ -1,0 +1,4 @@
+-- Rename enum value and add completedAt
+ALTER TYPE "FightStatus" RENAME VALUE 'AWAITING_CONFIRMATION' TO 'AWAITING_RESULT';
+
+ALTER TABLE "Fight" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP(3);

@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0b12;
+  --color-surface: #12141f;
+  --color-surface-elevated: #1a1d2e;
+  --color-border: #2a2f45;
+  --color-muted: #8b92b0;
+  --color-foreground: #eef0f8;
+  --color-accent: #7c5cff;
+  --color-accent-hover: #9580ff;
+  --color-accent-muted: #3d2f8a;
+  --color-blue: #3b82f6;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-slide-up: slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-pulse-soft: pulse-soft 3s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+}
+
+button:not(:disabled),
+[type="button"]:not(:disabled),
+[type="submit"]:not(:disabled),
+[type="reset"]:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[type="button"]:disabled,
+[type="submit"]:disabled,
+[type="reset"]:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.glow-accent {
+  box-shadow:
+    0 0 40px color-mix(in srgb, var(--color-accent) 25%, transparent),
+    0 4px 24px color-mix(in srgb, #000 40%, transparent);
+}
+
+.glow-pot {
+  box-shadow:
+    0 0 48px color-mix(in srgb, var(--color-accent) 35%, transparent),
+    0 0 80px color-mix(in srgb, var(--color-blue) 15%, transparent);
+}
+
+.glow-high-stakes {
+  box-shadow:
+    0 0 32px color-mix(in srgb, var(--color-warning) 20%, transparent),
+    0 8px 32px color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.grid-pattern {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-border) 30%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-border) 30%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.card-interactive {
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-4px);
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, var(--color-accent-hover), var(--color-blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* background-clip: text trims punctuation at span edges without extra room */
+  padding-inline: 0.08em;
+  margin-inline: -0.04em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
