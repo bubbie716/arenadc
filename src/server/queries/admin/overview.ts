@@ -1,5 +1,5 @@
 import { DepositRequestStatus, EscrowStatus, FightStatus, WithdrawRequestStatus } from "@prisma/client";
-import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
+import { getPlatformFeePercent } from "@/server/platform-settings";
 import type { AdminActivityItem, AdminOverviewStats } from "@/lib/admin/types";
 import { prisma } from "@/lib/prisma";
 
@@ -21,6 +21,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     completedWagerAgg,
     pendingDeposits,
     pendingWithdrawals,
+    platformFeePercent,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({
@@ -72,12 +73,13 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     }),
     prisma.depositRequest.count({ where: { status: DepositRequestStatus.PENDING } }),
     prisma.withdrawRequest.count({ where: { status: WithdrawRequestStatus.PENDING } }),
+    getPlatformFeePercent(),
   ]);
 
   const totalWageredSides = wagerAgg._sum.wagerAmount ?? 0;
   const completedWagerSides = completedWagerAgg._sum.wagerAmount ?? 0;
   const totalPots = completedWagerSides * 2;
-  const totalPlatformFees = Math.floor(totalPots * (PLATFORM_FEE_PERCENT / 100));
+  const totalPlatformFees = Math.floor(totalPots * (platformFeePercent / 100));
 
   return {
     totalUsers,

@@ -30,16 +30,27 @@ type OpponentStatus = "idle" | "checking" | "valid" | "not_registered" | "self";
 interface ScheduleFightFormProps {
   walletBalance: number;
   selfMcName: string;
+  suspended: boolean;
+  walletFrozen: boolean;
+  fightCreationEnabled: boolean;
+  platformFeePercent: number;
 }
 
-export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFormProps) {
+export function ScheduleFightForm({
+  walletBalance,
+  selfMcName,
+  suspended,
+  walletFrozen,
+  fightCreationEnabled,
+  platformFeePercent,
+}: ScheduleFightFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [opponent, setOpponent] = useState("");
   const [openChallenge, setOpenChallenge] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(defaultScheduleDateTimeLocal);
-  const [ruleset, setRuleset] = useState<RulesetId>("no_armor_sword");
-  const [format, setFormat] = useState<FormatId>("bo3");
+  const [ruleset, setRuleset] = useState<RulesetId>("fists_only");
+  const [format, setFormat] = useState<FormatId>("best_of_3");
   const [locationX, setLocationX] = useState("");
   const [locationY, setLocationY] = useState("");
   const [locationZ, setLocationZ] = useState("");
@@ -52,6 +63,14 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
   const [prepModalOpen, setPrepModalOpen] = useState(false);
 
   const exceedsBalance = wager > 0 && wager > walletBalance;
+
+  useEffect(() => {
+    if (walletFrozen && wager > 0) {
+      setWager(0);
+      setCustomWager(false);
+      setCustomWagerInput("");
+    }
+  }, [walletFrozen, wager]);
 
   useEffect(() => {
     if (openChallenge) {
@@ -111,6 +130,8 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
   const opponentReady = openChallenge || opponentStatus === "valid";
   const locationReady = locationError === null;
   const canSubmit =
+    fightCreationEnabled &&
+    !suspended &&
     opponentReady &&
     locationReady &&
     Boolean(scheduledAt) &&
@@ -169,6 +190,23 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
         autoComplete="off"
         onSubmit={(e) => e.preventDefault()}
       >
+        {suspended && (
+          <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
+            Your account is suspended. You cannot schedule fights until an admin reinstates your
+            account.
+          </p>
+        )}
+        {!fightCreationEnabled && !suspended && (
+          <p className="rounded-xl bg-warning/10 px-4 py-3 text-sm text-warning">
+            Fight creation is temporarily disabled by platform administrators.
+          </p>
+        )}
+        {walletFrozen && !suspended && fightCreationEnabled && (
+          <p className="rounded-xl bg-warning/10 px-4 py-3 text-sm text-warning">
+            Your wallet is frozen. You can schedule free fights only — no wagers or wallet
+            transactions.
+          </p>
+        )}
         <div>
           <label className="mb-2 block text-sm font-medium">Opponent Username</label>
           <input
@@ -233,7 +271,7 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium">Ruleset</label>
+            <label className="mb-2 block text-sm font-medium">Kit</label>
             <Select value={ruleset} onValueChange={(v) => setRuleset(v as RulesetId)}>
               <SelectTrigger>
                 <SelectValue />
@@ -265,7 +303,10 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
         </div>
 
         <div>
-          <p className="mb-2 block text-sm font-medium">Fight Location</p>
+          <p className="mb-2 block text-sm font-medium">
+            Fight Location{" "}
+            <span className="font-normal text-muted">(In-game Coordinates)</span>
+          </p>
           <div className="flex flex-wrap gap-2">
             {(
               [
@@ -309,7 +350,11 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
             onChange={setWager}
             customMode={customWager}
             onCustomModeChange={handleCustomWagerModeChange}
+            freeOnly={walletFrozen}
           />
+          {walletFrozen && (
+            <p className="mt-2 text-xs text-muted">Wager fights are disabled while your wallet is frozen.</p>
+          )}
           {customWager && (
             <input
               type="text"
@@ -345,6 +390,7 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
           confirmLabel="Create Fight"
           pending={pending}
           context="create"
+          wagerAmount={wager}
         />
 
         {error && (
@@ -355,6 +401,7 @@ export function ScheduleFightForm({ walletBalance, selfMcName }: ScheduleFightFo
       <aside className="lg:col-span-2">
         <FightSummaryCard
           wager={wager}
+          platformFeePercent={platformFeePercent}
           opponentLabel={labels.opponent}
           rulesetLabel={labels.ruleset}
           formatLabel={labels.format}

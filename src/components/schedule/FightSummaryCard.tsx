@@ -1,10 +1,10 @@
-import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { calculatePot, formatRmd } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface FightSummaryCardProps {
   wager: number;
+  platformFeePercent: number;
   opponentLabel: string;
   rulesetLabel: string;
   formatLabel: string;
@@ -15,6 +15,7 @@ interface FightSummaryCardProps {
 
 export function FightSummaryCard({
   wager,
+  platformFeePercent,
   opponentLabel,
   rulesetLabel,
   formatLabel,
@@ -23,7 +24,7 @@ export function FightSummaryCard({
   walletBalance,
 }: FightSummaryCardProps) {
   const isFree = wager === 0;
-  const pot = calculatePot(wager);
+  const pot = calculatePot(wager, platformFeePercent);
 
   return (
     <Card className="sticky top-24 border-accent/30 glow-accent overflow-hidden">
@@ -43,20 +44,33 @@ export function FightSummaryCard({
           <p className="mt-2 text-xs text-muted">
             {isFree
               ? "No RMD wager — for practice or honor fights"
-              : `${formatRmd(wager)} per fighter · ${PLATFORM_FEE_PERCENT}% platform fee`}
+              : `${formatRmd(wager)} per fighter · ${platformFeePercent}% platform fee`}
           </p>
         </div>
 
         <dl className="space-y-2 text-sm">
-          {[
-            ["Opponent", opponentLabel],
-            ["Ruleset", rulesetLabel],
-            ["Format", formatLabel],
-            ["Fight Location", fightLocation],
-          ].map(([k, v]) => (
-            <div key={k} className="flex justify-between border-b border-border/40 pb-2">
-              <dt className="text-muted">{k}</dt>
-              <dd className="max-w-[55%] truncate text-right font-medium">{v}</dd>
+          {(
+            [
+              { label: "Opponent", value: opponentLabel },
+              { label: "Kit", value: rulesetLabel },
+              { label: "Format", value: formatLabel },
+              {
+                label: "Fight Location",
+                sublabel: "(In-game Coordinates)",
+                value: fightLocation,
+              },
+            ] as const
+          ).map((item) => (
+            <div key={item.label} className="flex justify-between border-b border-border/40 pb-2">
+              <dt className="text-muted">
+                {item.label}
+                {"sublabel" in item && item.sublabel ? (
+                  <span className="block text-[11px] font-normal text-muted/80">
+                    {item.sublabel}
+                  </span>
+                ) : null}
+              </dt>
+              <dd className="max-w-[55%] truncate text-right font-medium">{item.value}</dd>
             </div>
           ))}
         </dl>

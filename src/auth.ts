@@ -1,4 +1,5 @@
 import NextAuth, { type Session } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import type { DiscordProfile } from "next-auth/providers/discord";
 import { authConfig } from "@/auth.config";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +32,44 @@ async function upsertDiscordUser(profile: DiscordProfile) {
   });
 }
 
+/** Drop auth fields when the DB user no longer exists (e.g. after prisma migrate reset). */
+function clearedAuthToken(token: JWT): JWT {
+  return {
+    sub: token.sub,
+    iat: token.iat,
+    exp: token.exp,
+    jti: token.jti,
+  };
+}
+
+async function syncTokenFromDbUserId(token: JWT): Promise<JWT> {
+  const dbUserId = token.dbUserId;
+  if (!dbUserId) return token;
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: dbUserId },
+    select: {
+      id: true,
+      onboardingComplete: true,
+      minecraftUsername: true,
+      isAdmin: true,
+      discordUsername: true,
+      avatarUrl: true,
+    },
+  });
+
+  if (!dbUser) {
+    return clearedAuthToken(token);
+  }
+
+  token.onboardingComplete = dbUser.onboardingComplete;
+  token.minecraftUsername = dbUser.minecraftUsername;
+  token.isAdmin = dbUser.isAdmin;
+  token.discordUsername = dbUser.discordUsername;
+  token.picture = dbUser.avatarUrl ?? undefined;
+  return token;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   callbacks: {
@@ -51,40 +90,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.isAdmin = dbUser.isAdmin;
         token.name = discord.global_name ?? discord.username;
         token.picture = dbUser.avatarUrl ?? undefined;
+        return token;
       }
-      return token;
+
+      return syncTokenFromDbUserId(token);
     },
     async session({ session, token }): Promise<Session> {
       const dbUserId = token.dbUserId as string | undefined;
-      let onboardingComplete = Boolean(token.onboardingComplete);
-      let minecraftUsername: string | null =
-        (token.minecraftUsername as string | null) ?? null;
-      let isAdmin = Boolean(token.isAdmin);
-      let discordUsername = (token.discordUsername as string) ?? "Unknown";
-      let image: string | null = (token.picture as string) ?? null;
 
-      if (dbUserId) {
-        const dbUser = await prisma.user.findUnique({ where: { id: dbUserId } });
-        if (dbUser) {
-          onboardingComplete = dbUser.onboardingComplete;
-          minecraftUsername = dbUser.minecraftUsername ?? null;
-          isAdmin = dbUser.isAdmin;
-          discordUsername = dbUser.discordUsername;
-          image = dbUser.avatarUrl;
-        }
+      if (!dbUserId) {
+        return {
+          expires: session.expires,
+          user: {
+            id: "",
+            discordUsername: "Unknown",
+            name: null,
+            image: null,
+            dbUserId: "",
+            onboardingComplete: false,
+            minecraftUsername: null,
+            isAdmin: false,
+          },
+        };
       }
 
       return {
         expires: session.expires,
         user: {
-          id: dbUserId ?? "",
-          discordUsername,
+          id: dbUserId,
+          discordUsername: (token.discordUsername as string) ?? "Unknown",
           name: token.name ?? null,
-          image,
-          dbUserId: dbUserId ?? "",
-          onboardingComplete,
-          minecraftUsername,
-          isAdmin,
+          image: (token.picture as string) ?? null,
+          dbUserId,
+          onboardingComplete: Boolean(token.onboardingComplete),
+          minecraftUsername: (token.minecraftUsername as string | null) ?? null,
+          isAdmin: Boolean(token.isAdmin),
         },
       };
     },

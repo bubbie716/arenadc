@@ -43,11 +43,6 @@ const txTypeColors: Record<string, string> = {
   admin_adjustment: "text-accent-hover",
 };
 
-const REJECTED_DEPOSIT_MSG =
-  "Deposit rejected. Please check the admin note and submit a new request if needed.";
-const REJECTED_WITHDRAW_MSG =
-  "Withdrawal rejected. Locked funds have been returned to your available balance.";
-
 export function WalletClient(props: WalletPageData) {
   const {
     balance,
@@ -57,10 +52,13 @@ export function WalletClient(props: WalletPageData) {
     transactions,
     pendingEscrows,
     upcomingPayouts,
-    depositRequests,
-    withdrawRequests,
+    pendingDepositRequests,
+    pendingWithdrawRequests,
     defaultMinecraftUsername,
     depositAccountName,
+    suspended,
+    walletFrozen,
+    withdrawalsEnabled,
   } = props;
 
   const [depositOpen, setDepositOpen] = useState(false);
@@ -68,15 +66,29 @@ export function WalletClient(props: WalletPageData) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const recentDeposits = depositRequests.filter(
-    (d) => d.status === "pending" || d.status === "rejected" || isRecent(d.createdAt),
-  );
-  const recentWithdrawals = withdrawRequests.filter(
-    (w) => w.status === "pending" || w.status === "rejected" || isRecent(w.createdAt),
-  );
+  const walletLocked = suspended || walletFrozen;
+  const depositsDisabled = walletLocked;
+  const withdrawalsDisabled = walletLocked || !withdrawalsEnabled;
 
   return (
     <>
+      {suspended && (
+        <p className="mb-6 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
+          Your account is suspended. You cannot deposit, withdraw, or schedule fights.
+        </p>
+      )}
+      {walletFrozen && !suspended && (
+        <p className="mb-6 rounded-xl bg-warning/10 px-4 py-3 text-sm text-warning">
+          Your wallet is frozen. Deposits and withdrawals are disabled. You can still schedule free
+          fights.
+        </p>
+      )}
+      {!withdrawalsEnabled && !suspended && !walletFrozen && (
+        <p className="mb-6 rounded-xl bg-warning/10 px-4 py-3 text-sm text-warning">
+          Withdrawals are temporarily disabled by platform administrators. Deposits may still be
+          available.
+        </p>
+      )}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Available Balance" value={formatRmd(balance)} highlight />
         <StatCard label="In Escrow" value={formatRmd(escrowBalance)} subtext="Locked for active fights" />
@@ -94,8 +106,10 @@ export function WalletClient(props: WalletPageData) {
       </div>
 
       <div className="mb-8 flex flex-wrap gap-3">
-        <Button onClick={() => setDepositOpen(true)}>Deposit</Button>
-        <Button variant="secondary" onClick={() => setWithdrawOpen(true)}>
+        <Button onClick={() => setDepositOpen(true)} disabled={depositsDisabled}>
+          Deposit
+        </Button>
+        <Button variant="secondary" onClick={() => setWithdrawOpen(true)} disabled={withdrawalsDisabled}>
           Withdraw
         </Button>
       </div>
@@ -109,13 +123,13 @@ export function WalletClient(props: WalletPageData) {
 
       <div className="mb-8 grid gap-6 lg:grid-cols-2">
         <RequestSection title="Pending Deposits" empty="No deposit requests.">
-          {recentDeposits.map((d) => (
+          {pendingDepositRequests.map((d) => (
             <DepositRequestCard key={d.id} request={d} />
           ))}
         </RequestSection>
 
         <RequestSection title="Pending Withdrawals" empty="No withdrawal requests.">
-          {recentWithdrawals.map((w) => (
+          {pendingWithdrawRequests.map((w) => (
             <WithdrawRequestCard key={w.id} request={w} />
           ))}
         </RequestSection>
@@ -256,7 +270,6 @@ function DepositRequestCard({ request }: { request: WalletDepositRequest }) {
         <StatusPill status={request.status} />
       </div>
       <p className="mt-1 text-xs text-muted">Submitted {formatDate(request.createdAt)}</p>
-      {request.note && <p className="mt-2 text-xs text-muted">Note: {request.note}</p>}
       <div className="relative mt-3 h-28 w-full overflow-hidden rounded-lg border border-border">
         <Image
           src={request.proofImageUrl}
@@ -266,12 +279,6 @@ function DepositRequestCard({ request }: { request: WalletDepositRequest }) {
           unoptimized
         />
       </div>
-      {request.status === "rejected" && (
-        <p className="mt-3 text-xs text-danger">
-          {REJECTED_DEPOSIT_MSG}
-          {request.adminNote ? ` Admin note: ${request.adminNote}` : ""}
-        </p>
-      )}
     </div>
   );
 }
@@ -285,13 +292,6 @@ function WithdrawRequestCard({ request }: { request: WalletWithdrawRequest }) {
       </div>
       <p className="mt-1 text-sm">To {request.minecraftUsername}</p>
       <p className="text-xs text-muted">Submitted {formatDate(request.createdAt)}</p>
-      {request.note && <p className="mt-2 text-xs text-muted">Note: {request.note}</p>}
-      {request.status === "rejected" && (
-        <p className="mt-3 text-xs text-danger">
-          {REJECTED_WITHDRAW_MSG}
-          {request.adminNote ? ` Admin note: ${request.adminNote}` : ""}
-        </p>
-      )}
     </div>
   );
 }
@@ -378,8 +378,4 @@ function EmptyHint({
       <p className="mt-1 max-w-[220px] text-xs text-muted">{subtitle}</p>
     </div>
   );
-}
-
-function isRecent(iso: string) {
-  return Date.now() - new Date(iso).getTime() < 7 * 24 * 60 * 60 * 1000;
 }

@@ -1,5 +1,5 @@
-import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { buildFightDisplayFields } from "@/lib/fight-display";
+import { getPlatformFeePercent } from "@/server/platform-settings";
 import { mapFightStatus } from "@/lib/mappers";
 import type { FightStatus } from "@/lib/types";
 import { prisma } from "@/lib/prisma";
@@ -27,15 +27,18 @@ export type AdminFightRow = {
 };
 
 export async function getAdminFights(): Promise<AdminFightRow[]> {
-  const fights = await prisma.fight.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      playerA: { select: { minecraftUsername: true } },
-      playerB: { select: { minecraftUsername: true } },
-      createdBy: { select: { minecraftUsername: true } },
-      arena: { select: { name: true } },
-    },
-  });
+  const [fights, platformFeePercent] = await Promise.all([
+    prisma.fight.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        playerA: { select: { minecraftUsername: true } },
+        playerB: { select: { minecraftUsername: true } },
+        createdBy: { select: { minecraftUsername: true } },
+        arena: { select: { name: true } },
+      },
+    }),
+    getPlatformFeePercent(),
+  ]);
 
   return fights.map((fight) => {
     const playerAName =
@@ -48,7 +51,7 @@ export async function getAdminFights(): Promise<AdminFightRow[]> {
       else if (fight.playerBId === fight.winnerId) winner = playerBName;
     }
     const totalPot = fight.wagerAmount * 2;
-    const platformFee = Math.floor(totalPot * (PLATFORM_FEE_PERCENT / 100));
+    const platformFee = Math.floor(totalPot * (platformFeePercent / 100));
     const { displayId, fightNumber } = buildFightDisplayFields(fight);
 
     return {

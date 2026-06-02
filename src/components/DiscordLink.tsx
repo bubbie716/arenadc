@@ -1,4 +1,3 @@
-import { getDiscordInviteUrl } from "@/lib/discord";
 import { cn } from "@/lib/utils";
 
 function DiscordLogo({ className }: { className?: string }) {
@@ -15,13 +14,13 @@ function DiscordLogo({ className }: { className?: string }) {
 }
 
 interface DiscordLinkProps {
+  href: string;
   className?: string;
   variant?: "button" | "text" | "icon";
   children?: React.ReactNode;
 }
 
-export function DiscordLink({ className, variant = "text", children }: DiscordLinkProps) {
-  const href = getDiscordInviteUrl();
+export function DiscordLink({ href, className, variant = "text", children }: DiscordLinkProps) {
   const label = children ?? "Discord";
 
   if (variant === "icon") {

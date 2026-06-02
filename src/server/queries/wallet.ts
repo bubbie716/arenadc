@@ -10,6 +10,7 @@ import { TX_WAGER_LOSS } from "@/lib/wallet-tx-types";
 import { getWalletBalances } from "@/lib/wallet/ledger";
 import { mapFightStatus } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
+import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import type { FightStatus as UiFightStatus, Transaction } from "@/lib/types";
 
 async function backfillEscrowLockDescriptions(userId: string) {
@@ -113,7 +114,6 @@ function mapDepositRequest(d: {
   id: string;
   amount: number;
   proofImageUrl: string;
-  note: string | null;
   status: DepositRequestStatus;
   adminNote: string | null;
   createdAt: Date;
@@ -123,7 +123,6 @@ function mapDepositRequest(d: {
     id: d.id,
     amount: d.amount,
     proofImageUrl: d.proofImageUrl,
-    note: d.note,
     status: d.status.toLowerCase() as "pending" | "approved" | "rejected",
     adminNote: d.adminNote,
     createdAt: d.createdAt.toISOString(),
@@ -135,7 +134,6 @@ function mapWithdrawRequest(w: {
   id: string;
   amount: number;
   minecraftUsername: string;
-  note: string | null;
   status: WithdrawRequestStatus;
   adminNote: string | null;
   createdAt: Date;
@@ -145,7 +143,6 @@ function mapWithdrawRequest(w: {
     id: w.id,
     amount: w.amount,
     minecraftUsername: w.minecraftUsername,
-    note: w.note,
     status: w.status.toLowerCase() as "pending" | "approved" | "paid" | "rejected",
     adminNote: w.adminNote,
     createdAt: w.createdAt.toISOString(),
@@ -191,7 +188,7 @@ export async function getWalletData(userId: string) {
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { minecraftUsername: true },
+    select: { minecraftUsername: true, suspendedAt: true, walletFrozen: true },
   });
 
   const escrowTotal = escrows.reduce((sum, e) => sum + e.amount, 0);
@@ -239,6 +236,7 @@ export async function getWalletData(userId: string) {
 
   const allDeposits = depositRequests.map(mapDepositRequest);
   const allWithdrawals = withdrawRequests.map(mapWithdrawRequest);
+  const platformSettings = await getResolvedPlatformSettings();
 
   return {
     balance: balances.availableBalance,
@@ -262,8 +260,10 @@ export async function getWalletData(userId: string) {
     pendingDepositRequests: allDeposits.filter((d) => d.status === "pending"),
     pendingWithdrawRequests: allWithdrawals.filter((w) => w.status === "pending"),
     defaultMinecraftUsername: user.minecraftUsername ?? "",
-    depositAccountName:
-      process.env.NEXT_PUBLIC_DEPOSIT_ACCOUNT_NAME?.trim() || "ArenaMC",
+    depositAccountName: platformSettings.depositAccountName,
+    suspended: Boolean(user.suspendedAt),
+    walletFrozen: user.walletFrozen,
+    withdrawalsEnabled: platformSettings.withdrawalsEnabled,
   };
 }
 

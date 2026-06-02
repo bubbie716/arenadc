@@ -5,3 +5,8 @@ export function requireAdminNote(note: string | undefined | null): string {
   }
   return trimmed;
 }
+
+export function optionalAdminNote(note: string | undefined | null): string | null {
+  const trimmed = note?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}

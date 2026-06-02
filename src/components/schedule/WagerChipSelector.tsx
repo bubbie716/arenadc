@@ -17,6 +17,7 @@ interface WagerChipSelectorProps {
   onChange: (value: number) => void;
   customMode: boolean;
   onCustomModeChange: (custom: boolean) => void;
+  freeOnly?: boolean;
 }
 
 export function WagerChipSelector({
@@ -24,36 +25,49 @@ export function WagerChipSelector({
   onChange,
   customMode,
   onCustomModeChange,
+  freeOnly = false,
 }: WagerChipSelectorProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {PRESETS.map((preset) => (
+        {PRESETS.map((preset) => {
+          const disabled = freeOnly && preset.value > 0;
+          return (
           <button
             key={preset.value}
             type="button"
+            disabled={disabled}
             onClick={() => {
+              if (disabled) return;
               onCustomModeChange(false);
               onChange(preset.value);
             }}
             className={cn(
               "rounded-xl border px-4 py-2.5 text-sm font-bold transition-all duration-200",
-              !customMode && value === preset.value
+              disabled && "cursor-not-allowed opacity-40",
+              !disabled && !customMode && value === preset.value
                 ? "border-accent bg-accent/20 text-accent-hover shadow-md shadow-accent/15 scale-[1.02]"
-                : "border-border bg-surface-elevated text-muted hover:border-accent/40 hover:text-foreground",
+                : !disabled
+                  ? "border-border bg-surface-elevated text-muted hover:border-accent/40 hover:text-foreground"
+                  : "border-border bg-surface-elevated text-muted",
             )}
           >
             {preset.label}
           </button>
-        ))}
+        );
+        })}
         <button
           type="button"
+          disabled={freeOnly}
           onClick={() => onCustomModeChange(true)}
           className={cn(
             "rounded-xl border px-4 py-2.5 text-sm font-bold transition-all duration-200",
-            customMode
+            freeOnly && "cursor-not-allowed opacity-40",
+            !freeOnly && customMode
               ? "border-accent bg-accent/20 text-accent-hover"
-              : "border-border bg-surface-elevated text-muted hover:border-accent/40",
+              : !freeOnly
+                ? "border-border bg-surface-elevated text-muted hover:border-accent/40"
+                : "border-border bg-surface-elevated text-muted",
           )}
         >
           Custom

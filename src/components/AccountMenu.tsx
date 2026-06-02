@@ -15,7 +15,7 @@ export function AccountMenu() {
     );
   }
 
-  if (session?.user) {
+  if (session?.user?.dbUserId) {
     return (
       <div className="flex items-center gap-2">
         <Link

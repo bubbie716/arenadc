@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { adminFightAction } from "@/actions/admin/fights";
 import { adminResolveDispute, adminReviewEvidence } from "@/actions/admin/disputes";
 import { adminUpdatePlatformSettings } from "@/actions/admin/settings";
@@ -14,6 +14,7 @@ import {
 } from "@/actions/admin/wallet";
 import {
   adminAdjustUserBalance,
+  adminSetNotificationsMuted,
   adminSetUserAdmin,
   adminSetUserSuspended,
   adminSetWalletFrozen,
@@ -38,7 +39,9 @@ type ConfirmState = {
   description?: string;
   confirmLabel?: string;
   variant?: "danger" | "primary" | "secondary";
-  onConfirm: (note: string) => void;
+  requireNote?: boolean;
+  allowSilent?: boolean;
+  onConfirm: (note: string, options?: { silent?: boolean }) => void;
 };
 
 export function AdminDashboard({ data }: { data: AdminDashboardData }) {
@@ -77,8 +80,8 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
   function openConfirm(state: ConfirmState) {
     setConfirm({
       ...state,
-      onConfirm: (note) => {
-        state.onConfirm(note);
+      onConfirm: (note, options) => {
+        state.onConfirm(note, options);
       },
     });
   }
@@ -249,7 +252,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
               "Fighters",
               "Wager",
               "Pot / Fee / Payout",
-              "Ruleset",
+              "Kit",
               "Arena",
               "Scheduled",
               "Status",
@@ -555,9 +558,11 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
         description={confirm?.description}
         confirmLabel={confirm?.confirmLabel}
         variant={confirm?.variant}
+        allowSilent={confirm?.allowSilent}
+        requireNote={confirm?.requireNote}
         pending={pending}
         onClose={() => setConfirm(null)}
-        onConfirm={(note) => confirm?.onConfirm(note)}
+        onConfirm={(note, options) => confirm?.onConfirm(note, options)}
       />
     </div>
   );
@@ -579,9 +584,9 @@ function UsersTab({
   return (
     <div className="relative">
       <DataTable
+        minWidth={1280}
         headers={[
           "User",
-          "MC",
           "Discord",
           "Balance",
           "Escrow",
@@ -593,12 +598,12 @@ function UsersTab({
           "Joined",
           "Role",
           "Status",
-          "",
+          "Actions",
         ]}
       >
         {users.map((u) => (
           <tr key={u.id} className="border-b border-border/40">
-            <td className="px-4 py-3">
+            <td className="whitespace-nowrap px-4 py-4">
               <button
                 type="button"
                 className="flex items-center gap-2 text-left text-sm font-semibold hover:text-accent"
@@ -610,31 +615,32 @@ function UsersTab({
                 {u.minecraftUsername ?? u.discordUsername}
               </button>
             </td>
-            <td className="px-4 py-3 text-xs">{u.minecraftUsername ?? "—"}</td>
-            <td className="px-4 py-3 text-xs">{u.discordUsername}</td>
-            <td className="px-4 py-3 tabular-nums">{formatRmd(u.walletBalance)}</td>
-            <td className="px-4 py-3 tabular-nums text-muted">{formatRmd(u.escrowBalance)}</td>
-            <td className="px-4 py-3 tabular-nums">{formatRmd(u.pendingWithdrawals)}</td>
-            <td className="px-4 py-3 tabular-nums">{formatRmd(u.totalWagered)}</td>
-            <td className="px-4 py-3 tabular-nums text-success">
+            <td className="whitespace-nowrap px-4 py-4 text-xs">{u.discordUsername}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatRmd(u.walletBalance)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums text-muted">{formatRmd(u.escrowBalance)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatRmd(u.pendingWithdrawals)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatRmd(u.totalWagered)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums text-success">
               {formatRmd(u.totalEarnings)}
             </td>
-            <td className="px-4 py-3 text-xs">
+            <td className="whitespace-nowrap px-4 py-4 text-xs">
               {u.wins}/{u.losses}
             </td>
-            <td className="px-4 py-3 text-xs">{u.disputesCount}</td>
-            <td className="px-4 py-3 text-xs text-muted">{formatDate(u.joinedAt)}</td>
-            <td className="px-4 py-3 text-xs">{u.isAdmin ? "Admin" : "User"}</td>
-            <td className="px-4 py-3 text-xs">
+            <td className="whitespace-nowrap px-4 py-4 text-xs">{u.disputesCount}</td>
+            <td className="whitespace-nowrap px-4 py-4 text-xs text-muted">{formatDate(u.joinedAt)}</td>
+            <td className="whitespace-nowrap px-4 py-4 text-xs">{u.isAdmin ? "Admin" : "User"}</td>
+            <td className="whitespace-nowrap px-4 py-4 text-xs">
               {u.suspended ? (
                 <span className="text-danger">Suspended</span>
               ) : u.walletFrozen ? (
                 <span className="text-warning">Frozen</span>
+              ) : u.notificationsMuted ? (
+                <span className="text-muted">Muted</span>
               ) : (
                 <span className="text-success">Active</span>
               )}
             </td>
-            <td className="px-4 py-3">
+            <td className="whitespace-nowrap px-4 py-4">
               <AdminActionsDropdown>
                 <AdminActionItem label="View user" onClick={() => setDetailId(u.id)} />
                 <AdminActionItem
@@ -642,9 +648,10 @@ function UsersTab({
                   onClick={() =>
                     openConfirm({
                       title: u.walletFrozen ? "Unfreeze wallet" : "Freeze wallet",
-                      onConfirm: (note) =>
+                      allowSilent: true,
+                      onConfirm: (note, options) =>
                         runAction(() =>
-                          adminSetWalletFrozen(u.id, !u.walletFrozen, note),
+                          adminSetWalletFrozen(u.id, !u.walletFrozen, note, options),
                         ),
                     })
                   }
@@ -655,9 +662,10 @@ function UsersTab({
                   onClick={() =>
                     openConfirm({
                       title: u.suspended ? "Unsuspend user" : "Suspend user",
-                      onConfirm: (note) =>
+                      allowSilent: true,
+                      onConfirm: (note, options) =>
                         runAction(() =>
-                          adminSetUserSuspended(u.id, !u.suspended, note),
+                          adminSetUserSuspended(u.id, !u.suspended, note, options),
                         ),
                     })
                   }
@@ -708,7 +716,38 @@ function UsersTab({
                 <dt className="text-xs text-muted">Disputes</dt>
                 <dd>{detail.disputesCount}</dd>
               </div>
+              <div>
+                <dt className="text-xs text-muted">Notifications</dt>
+                <dd>{detail.notificationsMuted ? "All muted" : "Enabled"}</dd>
+              </div>
             </dl>
+            <div className="mt-6 border-t border-border pt-6">
+              <h3 className="text-sm font-bold">Notifications</h3>
+              <p className="mt-1 text-xs text-muted">
+                Muted users will not receive any in-app notifications.
+              </p>
+              <Button
+                className="mt-3"
+                size="sm"
+                variant={detail.notificationsMuted ? "secondary" : "danger"}
+                onClick={() =>
+                  openConfirm({
+                    title: detail.notificationsMuted
+                      ? "Enable notifications"
+                      : "Mute all notifications",
+                    description: detail.notificationsMuted
+                      ? "This user will start receiving notifications again."
+                      : "This user will not receive any notifications until re-enabled.",
+                    onConfirm: (note) =>
+                      runAction(() =>
+                        adminSetNotificationsMuted(detail.id, !detail.notificationsMuted, note),
+                      ),
+                  })
+                }
+              >
+                {detail.notificationsMuted ? "Enable notifications" : "Mute all notifications"}
+              </Button>
+            </div>
             <div className="mt-6 border-t border-border pt-6">
               <h3 className="text-sm font-bold">Manual balance adjustment</h3>
               <input
@@ -726,8 +765,11 @@ function UsersTab({
                   openConfirm({
                     title: "Adjust balance",
                     description: `${amount >= 0 ? "+" : ""}${amount} RMD`,
-                    onConfirm: (note) =>
-                      runAction(() => adminAdjustUserBalance(detail.id, amount, note)),
+                    allowSilent: true,
+                    onConfirm: (note, options) =>
+                      runAction(() =>
+                        adminAdjustUserBalance(detail.id, amount, note, options),
+                      ),
                   });
                 }}
               >
@@ -791,7 +833,7 @@ function WalletTab({
 
       <Panel title="Deposit requests">
         <DataTable
-          headers={["ID", "User", "Amount", "Proof", "Note", "Status", "Submitted", "Actions"]}
+          headers={["ID", "User", "Amount", "Proof", "Status", "Submitted", "Actions"]}
         >
           {depRows.map((d) => (
             <tr key={d.id} className="border-b border-border/40">
@@ -810,9 +852,6 @@ function WalletTab({
                   View proof
                 </a>
               </td>
-              <td className="max-w-[8rem] truncate px-4 py-3 text-xs text-muted">
-                {d.note ?? "—"}
-              </td>
               <td className="px-4 py-3 text-xs">{d.status}</td>
               <td className="px-4 py-3 text-xs text-muted">{formatDate(d.createdAt)}</td>
               <td className="px-4 py-3">
@@ -824,6 +863,7 @@ function WalletTab({
                         openConfirm({
                           title: "Approve deposit",
                           variant: "primary",
+                          requireNote: false,
                           onConfirm: (note) =>
                             runAction(() => adminApproveDeposit(d.id, note)),
                         })
@@ -850,7 +890,7 @@ function WalletTab({
 
       <Panel title="Withdrawal requests">
         <DataTable
-          headers={["ID", "User", "Pay to (MC)", "Amount", "Note", "Status", "Submitted", "Actions"]}
+          headers={["ID", "User", "Pay to (MC)", "Amount", "Status", "Submitted", "Actions"]}
         >
           {wdRows.map((w) => (
             <tr key={w.id} className="border-b border-border/40">
@@ -860,9 +900,6 @@ function WalletTab({
               </td>
               <td className="px-4 py-3 text-sm font-medium">{w.minecraftUsername}</td>
               <td className="px-4 py-3 font-semibold">{formatRmd(w.amount)}</td>
-              <td className="max-w-[8rem] truncate px-4 py-3 text-xs text-muted">
-                {w.note ?? "—"}
-              </td>
               <td className="px-4 py-3 text-xs">{w.status}</td>
               <td className="px-4 py-3 text-xs text-muted">{formatDate(w.createdAt)}</td>
               <td className="px-4 py-3">
@@ -874,6 +911,7 @@ function WalletTab({
                         openConfirm({
                           title: "Mark withdrawal paid",
                           variant: "primary",
+                          requireNote: false,
                           onConfirm: (note) =>
                             runAction(() => adminMarkWithdrawalPaid(w.id, note)),
                         })
@@ -911,6 +949,10 @@ function SettingsTab({
   onSave: (s: Record<string, string>) => void;
 }) {
   const [local, setLocal] = useState(settings);
+
+  useEffect(() => {
+    setLocal(settings);
+  }, [settings]);
 
   const fields: { key: keyof typeof settings; label: string; type?: string }[] = [
     { key: "platform_fee_percent", label: "Platform fee %" },
@@ -969,21 +1011,37 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function DataTable({ headers, children }: { headers: string[]; children: ReactNode }) {
+function DataTable({
+  headers,
+  children,
+  minWidth = 640,
+}: {
+  headers: string[];
+  children: ReactNode;
+  minWidth?: number;
+}) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-border bg-surface-elevated">
-            {headers.map((h) => (
-              <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
+    <div className="rounded-2xl border border-border bg-surface">
+      <div className="overflow-x-auto">
+        <table
+          className="w-full text-left text-sm"
+          style={{ minWidth: `${minWidth}px` }}
+        >
+          <thead>
+            <tr className="border-b border-border bg-surface-elevated">
+              {headers.map((h) => (
+                <th
+                  key={h || "actions"}
+                  className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { LegalDocumentBody } from "@/components/legal/LegalDocumentBody";
 import { LegalDocumentFooter } from "@/components/legal/LegalDocumentFooter";
 import { PageShell } from "@/components/PageShell";
+import { resolveDiscordInviteUrl } from "@/components/MaintenanceGuard";
 import type { LegalSection } from "@/lib/legal/types";
 
 export type { LegalSection, LegalSubsection } from "@/lib/legal/types";
@@ -15,7 +16,7 @@ interface LegalDocumentProps {
   footerNote?: string;
 }
 
-export function LegalDocument({
+export async function LegalDocument({
   title,
   description,
   effectiveDate,
@@ -24,8 +25,10 @@ export function LegalDocument({
   sections,
   footerNote,
 }: LegalDocumentProps) {
+  const discordInviteUrl = await resolveDiscordInviteUrl();
+
   return (
-    <PageShell title={title} description={description} maxWidth="lg">
+    <PageShell title={title} description={description} maxWidth="lg" discordInviteUrl={discordInviteUrl}>
       <LegalDocumentBody
         effectiveDate={effectiveDate}
         lastUpdated={lastUpdated}
@@ -33,7 +36,7 @@ export function LegalDocument({
         sections={sections}
       />
 
-      <LegalDocumentFooter note={footerNote} />
+      <LegalDocumentFooter discordInviteUrl={discordInviteUrl} note={footerNote} />
     </PageShell>
   );
 }

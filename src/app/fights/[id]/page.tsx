@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import { AcceptFightPanel } from "@/components/fight/AcceptFightPanel";
-import { FightConfirmation } from "@/components/FightConfirmation";
+import { FightConfirmation, type FightResultReport } from "@/components/FightConfirmation";
 import { CommunityPick } from "@/components/fight/CommunityPick";
 import { FighterComparison } from "@/components/fight/FighterComparison";
 import { FightTimeline } from "@/components/fight/FightTimeline";
@@ -12,13 +12,16 @@ import { DisputeEvidence } from "@/components/fight/DisputeEvidence";
 import { FightRecordings } from "@/components/fight/FightRecordings";
 import { RecordingNotice } from "@/components/fight/RecordingNotice";
 import { DISPUTE_EVIDENCE_STATUSES, RESOLVED_FIGHT_STATUSES } from "@/lib/fight-statuses";
-import { FightStatus as DbFightStatus } from "@prisma/client";
+import { FightStatus as DbFightStatus, FightResultType } from "@prisma/client";
 import { getLatestEvidenceByFighter } from "@/server/queries/evidence";
+import { getPlatformFeePercent } from "@/server/platform-settings";
+import { resolveDiscordInviteUrl } from "@/components/MaintenanceGuard";
 import { FighterCard } from "@/components/FighterCard";
 import { PageShell } from "@/components/PageShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/auth";
-import { getCommunityPick, getFighterStats } from "@/lib/fighter-stats";
+import { getCommunityPickForFight } from "@/server/queries/community-pick";
+import { getFighterStats } from "@/lib/fighter-stats";
 import { getFightLocationLabel } from "@/lib/fight-location";
 import { getFormatLabel, getRulesetLabel } from "@/lib/utils";
 import { fightInclude, mapFightToUI } from "@/lib/mappers";
@@ -31,10 +34,12 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
   const { id } = await params;
   const session = await auth();
 
-  const [{ syncPastScheduledFights }, { repairAllFightDisplayNumbers, ensureFightDisplayNumber }] =
+  const [{ syncPastScheduledFights }, { repairAllFightDisplayNumbers, ensureFightDisplayNumber }, platformFeePercent, discordInviteUrl] =
     await Promise.all([
       import("@/server/fight-status"),
       import("@/server/fight-display"),
+      getPlatformFeePercent(),
+      resolveDiscordInviteUrl(),
     ]);
   await syncPastScheduledFights();
   await repairAllFightDisplayNumbers();
@@ -46,6 +51,7 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
       createdBy: { select: { id: true, minecraftUsername: true } },
       playerA: { select: { id: true, minecraftUsername: true } },
       playerB: { select: { id: true, minecraftUsername: true } },
+      results: { select: { reportedById: true, type: true } },
     },
   });
 
@@ -56,16 +62,37 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
   }
 
   const fight = mapFightToUI(fightRow);
-  const [statsA, statsB] = await Promise.all([
+  const [statsA, statsB, communityPick] = await Promise.all([
     getFighterStats(fight.playerA),
     getFighterStats(fight.playerB),
+    getCommunityPickForFight(fight.id, session?.user?.dbUserId),
   ]);
-  const communityPick = getCommunityPick(fight.id);
   const dbUserId = session?.user?.dbUserId;
   const mcName = session?.user?.minecraftUsername?.toLowerCase();
 
   const isCreator = dbUserId === fightRow.createdById;
   const isPlayer = dbUserId === fightRow.playerAId || dbUserId === fightRow.playerBId;
+
+  const resultTypeToReport = (type: FightResultType): FightResultReport | null => {
+    switch (type) {
+      case FightResultType.WIN:
+        return "won";
+      case FightResultType.LOSS:
+        return "lost";
+      case FightResultType.DISPUTE:
+        return "dispute";
+      default:
+        return null;
+    }
+  };
+
+  const playerResult = dbUserId
+    ? fightRow.results.find((r) => r.reportedById === dbUserId)
+    : undefined;
+  const existingReport: FightResultReport | null = playerResult
+    ? resultTypeToReport(playerResult.type)
+    : null;
+
   const acceptableStatuses: DbFightStatus[] = ["OPEN", "PENDING_ACCEPTANCE"];
   const canAccept =
     acceptableStatuses.includes(fightRow.status) &&
@@ -89,7 +116,7 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
     : { playerA: null, playerB: null };
 
   return (
-    <PageShell maxWidth="xl">
+    <PageShell maxWidth="xl" discordInviteUrl={discordInviteUrl}>
       <MatchupHero fight={fight} />
 
       {showResolvedRecordings && (
@@ -101,11 +128,11 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
         />
       )}
 
-      <PotShowcase wagerAmount={fight.wagerAmount} />
+      <PotShowcase wagerAmount={fight.wagerAmount} platformFeePercent={platformFeePercent} />
 
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         {[
-          { label: "Ruleset", value: getRulesetLabel(fight.ruleset) },
+          { label: "Kit", value: getRulesetLabel(fight.ruleset) },
           { label: "Format", value: getFormatLabel(fight.format) },
           {
             label: "Fight Location",
@@ -169,7 +196,13 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
       {isPlayer &&
         ["confirmed", "scheduled", "in_progress", "awaiting_result"].includes(
           fight.status,
-        ) && <FightConfirmation fightId={fight.id} />}
+        ) && (
+          <FightConfirmation
+            fightId={fight.id}
+            existingReport={existingReport}
+            isFreeFight={fight.wagerAmount === 0}
+          />
+        )}
 
       {showEvidenceUpload && (
         <DisputeEvidence
@@ -185,7 +218,7 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
         />
       )}
 
-      {!showResolvedRecordings && (
+      {!showResolvedRecordings && fight.wagerAmount > 0 && (
         <div className="mt-8">
           <RecordingNotice />
         </div>

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { FightResultType, FightStatus, WalletTransactionType } from "@prisma/client";
 import { formatFightDisplayId } from "@/lib/fight-display";
 import { requireOnboardedUser, requireSessionUser } from "@/lib/auth/session";
+import { assertCanParticipateInFight } from "@/lib/account-restrictions";
+import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import { prisma } from "@/lib/prisma";
 import {
   ACCEPTABLE_FIGHT_STATUSES,
@@ -20,6 +22,7 @@ import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { payoutFightWinner, refundFightEscrow } from "@/server/fight-payout";
 import { syncPastScheduledFights, tryFinalizeFightFromResults } from "@/server/fight-status";
 import { normalizeFightLocation, validateFightLocation } from "@/lib/fight-location";
+import { getDefaultArena } from "@/server/arenas";
 import type { FormatId, RulesetId } from "@/lib/types";
 
 export type ActionResult<T = void> =
@@ -38,6 +41,16 @@ export async function createFight(input: {
   try {
     const user = await requireOnboardedUser();
 
+    const platformSettings = await getResolvedPlatformSettings();
+    if (!platformSettings.fightCreationEnabled) {
+      return { ok: false, error: "Fight creation is temporarily disabled." };
+    }
+
+    const participation = assertCanParticipateInFight(user, input.wagerAmount);
+    if (!participation.ok) {
+      return { ok: false, error: participation.error };
+    }
+
     if (input.wagerAmount < 0) {
       return { ok: false, error: "Wager cannot be negative." };
     }
@@ -55,10 +68,7 @@ export async function createFight(input: {
       return { ok: false, error: locationError };
     }
 
-    const defaultArena = await prisma.arena.findFirst({
-      where: { approved: true },
-      orderBy: { slug: "asc" },
-    });
+    const defaultArena = await getDefaultArena();
     if (!defaultArena) {
       return { ok: false, error: "No arenas configured. Contact an admin." };
     }
@@ -80,13 +90,29 @@ export async function createFight(input: {
           minecraftUsername: { equals: opponentName, mode: "insensitive" },
           onboardingComplete: true,
         },
-        select: { id: true, minecraftUsername: true },
+        select: {
+          id: true,
+          minecraftUsername: true,
+          walletFrozen: true,
+          suspendedAt: true,
+        },
       });
 
       if (!opponent?.minecraftUsername) {
         return {
           ok: false,
           error: "This player is not signed up on ArenaMC yet.",
+        };
+      }
+
+      if (opponent.suspendedAt) {
+        return { ok: false, error: "This player's account is suspended." };
+      }
+
+      if (input.wagerAmount > 0 && opponent.walletFrozen) {
+        return {
+          ok: false,
+          error: "This player's wallet is frozen and cannot join wager fights.",
         };
       }
 
@@ -174,6 +200,21 @@ export async function acceptFight(fightId: string): Promise<ActionResult> {
     });
 
     const hasWager = fight.wagerAmount > 0;
+
+    const accepterCheck = assertCanParticipateInFight(user, fight.wagerAmount);
+    if (!accepterCheck.ok) {
+      return { ok: false, error: accepterCheck.error };
+    }
+
+    const creatorCheck = assertCanParticipateInFight(creator, fight.wagerAmount);
+    if (!creatorCheck.ok) {
+      return {
+        ok: false,
+        error: hasWager
+          ? "The fight creator can no longer participate in wager fights."
+          : "The fight creator's account is restricted.",
+      };
+    }
 
     if (hasWager) {
       if (user.walletBalance < fight.wagerAmount) {
@@ -309,32 +350,49 @@ export async function reportFightResult(
       dispute: FightResultType.DISPUTE,
     };
 
-    await prisma.fightResult.upsert({
+    const existing = await prisma.fightResult.findUnique({
       where: {
         fightId_reportedById: { fightId, reportedById: user.id },
       },
-      create: {
+    });
+    if (existing) {
+      return { ok: false, error: "You already reported your result. It cannot be changed." };
+    }
+
+    await prisma.fightResult.create({
+      data: {
         fightId,
         reportedById: user.id,
         type: typeMap[result],
       },
-      update: { type: typeMap[result] },
     });
 
     if (result === "dispute") {
-      await prisma.fight.update({
-        where: { id: fightId },
-        data: { status: FightStatus.AWAITING_RECORDINGS },
-      });
-      const fighterIds = [fight.playerAId, fight.playerBId].filter(
-        (id): id is string => Boolean(id),
-      );
-      if (fighterIds.length > 0) {
-        await notifyFightDisputed({
-          userIds: fighterIds,
-          fightId,
-          fightNumber: fight.fightNumber,
+      if (fight.wagerAmount === 0) {
+        const opponentId =
+          user.id === fight.playerAId ? fight.playerBId : fight.playerAId;
+        if (!opponentId) {
+          return { ok: false, error: "Opponent not set." };
+        }
+        await payoutFightWinner(fightId, opponentId, {
+          resolvedSummary:
+            "Free fight disputed — automatic loss for the disputing fighter.",
         });
+      } else {
+        await prisma.fight.update({
+          where: { id: fightId },
+          data: { status: FightStatus.AWAITING_RECORDINGS },
+        });
+        const fighterIds = [fight.playerAId, fight.playerBId].filter(
+          (id): id is string => Boolean(id),
+        );
+        if (fighterIds.length > 0) {
+          await notifyFightDisputed({
+            userIds: fighterIds,
+            fightId,
+            fightNumber: fight.fightNumber,
+          });
+        }
       }
     } else {
       const finalize = await tryFinalizeFightFromResults(fightId);

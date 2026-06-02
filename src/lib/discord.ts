@@ -1,5 +1,5 @@
-const DEFAULT_DISCORD_INVITE = "https://discord.gg/REPLACE_ME";
+const DEFAULT_DISCORD_INVITE = "https://discord.gg/arenamc";
 
-export function getDiscordInviteUrl(): string {
+export function getDiscordInviteUrlFallback(): string {
   return process.env.NEXT_PUBLIC_DISCORD_INVITE_URL?.trim() || DEFAULT_DISCORD_INVITE;
 }

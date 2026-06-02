@@ -13,11 +13,12 @@ import {
   getRecentResults,
 } from "@/server/queries/fights";
 import { getHomePageData } from "@/server/queries/home";
+import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import { getSessionUser } from "@/lib/auth/session";
 import { formatRmd } from "@/lib/utils";
 
 export default async function HomePage() {
-  const [startingSoon, biggestPots, recentResults, homeData, fightCount, user] =
+  const [startingSoon, biggestPots, recentResults, homeData, fightCount, user, platformSettings] =
     await Promise.all([
     getFightsStartingSoon(),
     getBiggestPotFights(),
@@ -25,6 +26,7 @@ export default async function HomePage() {
     getHomePageData(),
     getFightCount(),
     getSessionUser(),
+    getResolvedPlatformSettings(),
   ]);
 
   const showGetStarted = !user?.onboardingComplete;
@@ -34,7 +36,7 @@ export default async function HomePage() {
   const emptyMessage = "No fights scheduled yet. Be the first to create one.";
 
   return (
-    <PageShell maxWidth="3xl">
+    <PageShell maxWidth="3xl" discordInviteUrl={platformSettings.discordInviteUrl}>
       <section className="relative mb-10 overflow-hidden rounded-3xl border border-border bg-surface card-interactive">
         <div className="absolute inset-0 grid-pattern opacity-40" />
         <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-accent/20 blur-3xl animate-pulse-soft" />
@@ -69,7 +71,9 @@ export default async function HomePage() {
                   Get Started
                 </Button>
               )}
-              <DiscordLink variant="button">Join Discord</DiscordLink>
+              <DiscordLink href={platformSettings.discordInviteUrl} variant="button">
+                Join Discord
+              </DiscordLink>
             </div>
           </div>
           <div className="hidden min-w-[200px] rounded-2xl border border-border/60 bg-surface-elevated/80 px-6 py-5 text-center lg:block">

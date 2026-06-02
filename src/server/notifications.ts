@@ -3,30 +3,25 @@ import { formatFightDisplayId } from "@/lib/fight-display";
 import { mapNotification } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
 import type { AppNotification } from "@/lib/types";
+import {
+  sendNotification,
+  sendNotifications,
+  type NotificationInput,
+} from "@/server/notifications/dispatch";
 
-type CreateNotificationInput = {
-  userId: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  relatedFightId?: string;
-};
+export type CreateNotificationInput = NotificationInput;
 
 export async function createNotification(input: CreateNotificationInput) {
-  return prisma.notification.create({
-    data: {
-      userId: input.userId,
-      type: input.type,
-      title: input.title,
-      message: input.message,
-      relatedFightId: input.relatedFightId,
-    },
+  const sent = await sendNotification(input);
+  if (!sent) return null;
+  return prisma.notification.findFirst({
+    where: { userId: input.userId },
+    orderBy: { createdAt: "desc" },
   });
 }
 
 export async function createNotifications(inputs: CreateNotificationInput[]) {
-  if (inputs.length === 0) return;
-  await prisma.notification.createMany({ data: inputs });
+  await sendNotifications(inputs);
 }
 
 export async function notifyFightInvite(params: {
@@ -126,6 +121,7 @@ export async function notifyFightResolved(params: {
   fightId: string;
   fightNumber: number;
   summary: string;
+  silent?: boolean;
 }) {
   const label = formatFightDisplayId(params.fightNumber);
   await createNotifications(
@@ -135,6 +131,7 @@ export async function notifyFightResolved(params: {
       title: "Fight resolved",
       message: `${label}: ${params.summary}`,
       relatedFightId: params.fightId,
+      silent: params.silent,
     })),
   );
 }

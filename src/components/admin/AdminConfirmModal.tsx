@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+
+const ActionsDropdownContext = createContext<(() => void) | null>(null);
 
 interface AdminConfirmModalProps {
   open: boolean;
@@ -11,9 +21,10 @@ interface AdminConfirmModalProps {
   confirmLabel?: string;
   variant?: "danger" | "primary" | "secondary";
   requireNote?: boolean;
+  allowSilent?: boolean;
   pending?: boolean;
   onClose: () => void;
-  onConfirm: (note: string) => void;
+  onConfirm: (note: string, options?: { silent?: boolean }) => void;
 }
 
 export function AdminConfirmModal({
@@ -23,14 +34,19 @@ export function AdminConfirmModal({
   confirmLabel = "Confirm",
   variant = "danger",
   requireNote = true,
+  allowSilent = false,
   pending = false,
   onClose,
   onConfirm,
 }: AdminConfirmModalProps) {
   const [note, setNote] = useState("");
+  const [silent, setSilent] = useState(false);
 
   useEffect(() => {
-    if (open) setNote("");
+    if (open) {
+      setNote("");
+      setSilent(false);
+    }
   }, [open]);
 
   if (!open) return null;
@@ -66,6 +82,22 @@ export function AdminConfirmModal({
             />
           </label>
         )}
+        {allowSilent && (
+          <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={silent}
+              onChange={(e) => setSilent(e.target.checked)}
+              className="mt-0.5 rounded border-border"
+            />
+            <span>
+              <span className="font-medium">Silent</span>
+              <span className="block text-xs text-muted">
+                Do not notify this user about this action.
+              </span>
+            </span>
+          </label>
+        )}
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={pending}>
             Cancel
@@ -73,7 +105,7 @@ export function AdminConfirmModal({
           <Button
             variant={variant === "danger" ? "danger" : variant === "secondary" ? "secondary" : undefined}
             disabled={pending || !noteOk}
-            onClick={() => onConfirm(note.trim())}
+            onClick={() => onConfirm(note.trim(), { silent })}
           >
             {pending ? "Working…" : confirmLabel}
           </Button>
@@ -90,15 +122,100 @@ export function AdminActionsDropdown({
   children: ReactNode;
   className?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<{
+    top: number;
+    left: number;
+    transform: string;
+  } | null>(null);
+
+  const close = () => setOpen(false);
+
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) {
+      setMenuStyle(null);
+      return;
+    }
+
+    function positionMenu() {
+      const trigger = triggerRef.current;
+      const menu = menuRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const menuHeight = menu?.offsetHeight ?? 160;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < menuHeight + 12;
+
+      setMenuStyle({
+        top: openUp ? rect.top - 8 : rect.bottom + 4,
+        left: rect.right,
+        transform: openUp ? "translate(-100%, -100%)" : "translateX(-100%)",
+      });
+    }
+
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   return (
-    <details className={cn("relative inline-block", className)}>
-      <summary className="cursor-pointer list-none rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-surface-elevated [&::-webkit-details-marker]:hidden">
-        Actions ▾
-      </summary>
-      <div className="absolute right-0 z-20 mt-1 min-w-[11rem] rounded-xl border border-border bg-surface-elevated py-1 shadow-xl">
-        {children}
+    <ActionsDropdownContext.Provider value={close}>
+      <div className={cn("inline-block", className)}>
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          onClick={() => setOpen((v) => !v)}
+          className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-surface-elevated"
+        >
+          Actions ▾
+        </button>
+        {open && (
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[60] cursor-default bg-transparent"
+              aria-label="Close menu"
+              onClick={close}
+            />
+            <div
+              ref={menuRef}
+              role="menu"
+              className={cn(
+                "fixed z-[70] min-w-[11rem] rounded-xl border border-border bg-surface-elevated py-1 shadow-2xl",
+                !menuStyle && "invisible",
+              )}
+              style={
+                menuStyle ?? {
+                  top: 0,
+                  left: 0,
+                  transform: "translateX(-100%)",
+                }
+              }
+            >
+              {children}
+            </div>
+          </>
+        )}
       </div>
-    </details>
+    </ActionsDropdownContext.Provider>
   );
 }
 
@@ -111,10 +228,16 @@ export function AdminActionItem({
   onClick: () => void;
   danger?: boolean;
 }) {
+  const closeMenu = useContext(ActionsDropdownContext);
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      role="menuitem"
+      onClick={() => {
+        onClick();
+        closeMenu?.();
+      }}
       className={cn(
         "block w-full px-3 py-2 text-left text-xs font-medium hover:bg-surface",
         danger ? "text-danger" : "text-foreground",

@@ -19,6 +19,8 @@ export const AdminAuditAction = {
   USER_ADMIN_GRANTED: "user.admin_granted",
   USER_ADMIN_REVOKED: "user.admin_revoked",
   USER_BALANCE_ADJUSTMENT: "user.balance_adjustment",
+  USER_NOTIFICATIONS_MUTED: "user.notifications_muted",
+  USER_NOTIFICATIONS_UNMUTED: "user.notifications_unmuted",
   SETTINGS_UPDATED: "settings.updated",
 } as const;
 

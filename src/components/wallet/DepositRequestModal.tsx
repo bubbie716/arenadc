@@ -23,7 +23,6 @@ export function DepositRequestModal({
 }: DepositRequestModalProps) {
   const [pending, startTransition] = useTransition();
   const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,7 +31,6 @@ export function DepositRequestModal({
 
   function reset() {
     setAmount("");
-    setNote("");
     setPreview(null);
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -80,7 +78,6 @@ export function DepositRequestModal({
         const res = await submitDepositRequest({
           amount: parsed,
           proofImageUrl: uploadJson.proofImageUrl,
-          note: note.trim() || undefined,
         });
 
         if (!res.ok) {
@@ -131,7 +128,7 @@ export function DepositRequestModal({
           />
         </label>
 
-        <label className="mt-4 block">
+        <div className="mt-4">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">
             Payment proof (required)
           </span>
@@ -142,28 +139,31 @@ export function DepositRequestModal({
             ref={inputRef}
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            className="mt-2 w-full text-sm"
+            className="sr-only"
             onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
           />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={() => inputRef.current?.click()}
+            >
+              {file ? "Change screenshot" : "Upload screenshot"}
+            </Button>
+            {file && (
+              <span className="max-w-[12rem] truncate text-xs text-muted" title={file.name}>
+                {file.name}
+              </span>
+            )}
+          </div>
           {preview && (
             <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-xl border border-border">
               <Image src={preview} alt="Payment proof preview" fill className="object-contain" unoptimized />
             </div>
           )}
-        </label>
-
-        <label className="mt-4 block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Note (optional)
-          </span>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            className="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
-            placeholder="Any details for the reviewer…"
-          />
-        </label>
+        </div>
 
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" disabled={pending} onClick={onClose}>

@@ -70,6 +70,11 @@ enum EvidenceSubmissionStatus {
   REJECTED
 }
 
+enum CommunityPickSide {
+  PLAYER_A
+  PLAYER_B
+}
+
 enum NotificationType {
   FIGHT_INVITE
   OPEN_CHALLENGE_ACCEPTED
@@ -84,6 +89,14 @@ enum NotificationType {
   WITHDRAWAL_PAID
   WITHDRAWAL_REJECTED
   WITHDRAWAL_REQUESTED
+  DEPOSIT_REQUESTED
+  DEPOSIT_SUBMITTED
+  WITHDRAWAL_SUBMITTED
+  ADMIN_BALANCE_ADJUSTMENT
+  WALLET_FROZEN
+  WALLET_UNFROZEN
+  ACCOUNT_SUSPENDED
+  ACCOUNT_UNSUSPENDED
 }
 
 model User {
@@ -98,6 +111,7 @@ model User {
   isAdmin            Boolean   @default(false)
   walletFrozen       Boolean   @default(false)
   suspendedAt        DateTime?
+  notificationsMuted Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -115,6 +129,7 @@ model User {
   evidenceSubmissions EvidenceSubmission[] @relation("EvidenceSubmitter")
   evidenceReviews     EvidenceSubmission[] @relation("EvidenceReviewer")
   notifications       Notification[]
+  communityVotes      FightCommunityVote[]
 }
 
 model Arena {
@@ -156,6 +171,7 @@ model Fight {
   results            FightResult[]
   evidenceSubmissions EvidenceSubmission[]
   notifications       Notification[]
+  communityVotes      FightCommunityVote[]
 
   @@index([status])
   @@index([scheduledAt])
@@ -285,6 +301,20 @@ model EvidenceSubmission {
   reviewedBy   User?                    @relation("EvidenceReviewer", fields: [reviewedById], references: [id])
 
   @@unique([fightId, uploaderId])
+  @@index([fightId])
+}
+
+model FightCommunityVote {
+  id        String            @id @default(cuid())
+  fightId   String
+  fight     Fight             @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  side      CommunityPickSide
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([fightId, userId])
   @@index([fightId])
 }
 

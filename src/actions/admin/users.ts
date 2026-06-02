@@ -8,11 +8,19 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { requireAdminNote } from "@/lib/admin/notes";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { prisma } from "@/lib/prisma";
+import {
+  notifyAccountSuspended,
+  notifyAccountUnsuspended,
+  notifyAdminBalanceAdjustment,
+  notifyWalletFrozen,
+  notifyWalletUnfrozen,
+} from "@/server/notifications/account";
 
 export async function adminSetWalletFrozen(
   userId: string,
   frozen: boolean,
   note: string,
+  options?: { silent?: boolean },
 ): Promise<ActionResult> {
   try {
     const admin = await requireAdmin();
@@ -31,7 +39,14 @@ export async function adminSetWalletFrozen(
       targetType: "user",
       targetId: userId,
       note: adminNote,
+      metadata: options?.silent ? { silent: true } : undefined,
     });
+
+    if (frozen) {
+      await notifyWalletFrozen(userId, { silent: options?.silent });
+    } else {
+      await notifyWalletUnfrozen(userId, { silent: options?.silent });
+    }
 
     revalidatePath("/admin");
     return { ok: true };
@@ -44,6 +59,7 @@ export async function adminSetUserSuspended(
   userId: string,
   suspended: boolean,
   note: string,
+  options?: { silent?: boolean },
 ): Promise<ActionResult> {
   try {
     const admin = await requireAdmin();
@@ -66,7 +82,14 @@ export async function adminSetUserSuspended(
       targetType: "user",
       targetId: userId,
       note: adminNote,
+      metadata: options?.silent ? { silent: true } : undefined,
     });
+
+    if (suspended) {
+      await notifyAccountSuspended(userId, { silent: options?.silent });
+    } else {
+      await notifyAccountUnsuspended(userId, { silent: options?.silent });
+    }
 
     revalidatePath("/admin");
     return { ok: true };
@@ -114,6 +137,7 @@ export async function adminAdjustUserBalance(
   userId: string,
   amount: number,
   note: string,
+  options?: { silent?: boolean },
 ): Promise<ActionResult> {
   try {
     const admin = await requireAdmin();
@@ -142,11 +166,44 @@ export async function adminAdjustUserBalance(
       targetType: "user",
       targetId: userId,
       note: adminNote,
-      metadata: { amount },
+      metadata: { amount, ...(options?.silent ? { silent: true } : {}) },
     });
+
+    await notifyAdminBalanceAdjustment(userId, amount, { silent: options?.silent });
 
     revalidatePath("/admin");
     revalidatePath("/wallet");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: adminErrorMessage(e) };
+  }
+}
+
+export async function adminSetNotificationsMuted(
+  userId: string,
+  muted: boolean,
+  note: string,
+): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const adminNote = requireAdminNote(note);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { notificationsMuted: muted },
+    });
+
+    await logAdminAction({
+      adminId: admin.id,
+      action: muted
+        ? AdminAuditAction.USER_NOTIFICATIONS_MUTED
+        : AdminAuditAction.USER_NOTIFICATIONS_UNMUTED,
+      targetType: "user",
+      targetId: userId,
+      note: adminNote,
+    });
+
+    revalidatePath("/admin");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: adminErrorMessage(e) };

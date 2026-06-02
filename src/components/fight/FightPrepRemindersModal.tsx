@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import {
-  FIGHT_PREP_PRE_FIGHT_STEPS,
-  FIGHT_PREP_RULE_REMINDERS,
   fightPrepIntro,
+  getFightPrepReminders,
+  getFightPrepSteps,
   type FightPrepContext,
 } from "@/lib/fight-prep-reminders";
 
@@ -18,6 +18,7 @@ interface FightPrepRemindersModalProps {
   pending?: boolean;
   context: FightPrepContext;
   fightDisplayId?: string;
+  wagerAmount?: number;
 }
 
 export function FightPrepRemindersModal({
@@ -28,7 +29,12 @@ export function FightPrepRemindersModal({
   pending = false,
   context,
   fightDisplayId,
+  wagerAmount = 0,
 }: FightPrepRemindersModalProps) {
+  const isFreeFight = wagerAmount === 0;
+  const preFightSteps = getFightPrepSteps(isFreeFight);
+  const ruleReminders = getFightPrepReminders(isFreeFight);
+
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -79,7 +85,6 @@ export function FightPrepRemindersModal({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-
   function handleBackdropClick() {
     if (!pending) onClose();
   }
@@ -105,8 +110,12 @@ export function FightPrepRemindersModal({
             <p className="text-xs font-semibold uppercase tracking-wider text-accent">
               Before you fight
             </p>
-            <h2 className="mt-1 text-xl font-bold sm:text-2xl">Fight prep & rules reminder</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{fightPrepIntro(context)}</p>
+            <h2 className="mt-1 text-xl font-bold sm:text-2xl">
+              {isFreeFight ? "Free fight reminder" : "Fight prep & rules reminder"}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {fightPrepIntro(context, isFreeFight)}
+            </p>
             <p className="mt-3 text-xs font-medium text-accent">
               Scroll through the checklist below — required before you continue.
             </p>
@@ -134,105 +143,118 @@ export function FightPrepRemindersModal({
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5 [scrollbar-gutter:stable] [overflow-anchor:none]"
           >
             <div className="min-h-[calc(100%+1px)]">
-            <section>
-              <h3 className="text-sm font-bold text-foreground">Required before combat</h3>
-              <ol className="mt-3 space-y-4">
-                {FIGHT_PREP_PRE_FIGHT_STEPS.map((step, index) => (
-                  <li key={step.title} className="flex gap-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent">
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground">{step.title}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-muted">{step.detail}</p>
-                      {"code" in step && step.code ? (
-                        <p className="mt-2 font-mono text-xs text-foreground">
-                          {step.code === "Fight ID" ? (
-                            fightDisplayId ? (
-                              <>
-                                Example:{" "}
-                                <span className="rounded-md border border-border bg-surface-elevated px-2 py-1">
-                                  {fightDisplayId}
+              <section>
+                <h3 className="text-sm font-bold text-foreground">
+                  {isFreeFight ? "Before you start" : "Required before combat"}
+                </h3>
+                <ol className="mt-3 space-y-4">
+                  {preFightSteps.map((step, index) => (
+                    <li key={step.title} className="flex gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground">{step.title}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-muted">{step.detail}</p>
+                        {"code" in step && step.code ? (
+                          <p className="mt-2 font-mono text-xs text-foreground">
+                            {step.code === "Fight ID" ? (
+                              fightDisplayId ? (
+                                <>
+                                  Example:{" "}
+                                  <span className="rounded-md border border-border bg-surface-elevated px-2 py-1">
+                                    {fightDisplayId}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="font-sans text-muted">
+                                  Your Fight ID appears on the fight page after scheduling.
                                 </span>
-                              </>
+                              )
                             ) : (
-                              <span className="font-sans text-muted">
-                                Your Fight ID appears on the fight page after scheduling.
+                              <span className="rounded-md border border-border bg-surface-elevated px-2 py-1">
+                                {step.code}
                               </span>
-                            )
-                          ) : (
-                            <span className="rounded-md border border-border bg-surface-elevated px-2 py-1">
-                              {step.code}
-                            </span>
-                          )}
-                        </p>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
+                            )}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
 
-            <section className="mt-6 rounded-xl border border-blue/25 bg-blue/5 p-4">
-              <p className="text-sm font-bold text-foreground">You must record your POV</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted">
-                Recording is required for all wagered fights — not optional. If the result is
-                disputed, both fighters must submit POV links within{" "}
-                <span className="font-semibold text-foreground">15 minutes</span>.
+              {isFreeFight ? (
+                <section className="mt-6 rounded-xl border border-warning/25 bg-warning/5 p-4">
+                  <p className="text-sm font-bold text-foreground">Free fight disputes</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">
+                    Recording is not required. If you hit{" "}
+                    <span className="font-semibold text-foreground">Dispute</span> on a free fight,
+                    it counts as an automatic loss on your record and your opponent gets the win.
+                  </p>
+                </section>
+              ) : (
+                <section className="mt-6 rounded-xl border border-blue/25 bg-blue/5 p-4">
+                  <p className="text-sm font-bold text-foreground">You must record your POV</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">
+                    Recording is required for all wagered fights — not optional. If the result is
+                    disputed, both fighters must submit POV links within{" "}
+                    <span className="font-semibold text-foreground">15 minutes</span>.
+                  </p>
+                </section>
+              )}
+
+              <section className="mt-6">
+                <h3 className="text-sm font-bold text-foreground">Also remember</h3>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted">
+                  {ruleReminders.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+
+              <p className="mt-6 border-t border-border pt-5 text-sm text-muted">
+                Full rules:{" "}
+                <Link
+                  href="/fight-rules"
+                  target="_blank"
+                  className="font-medium text-accent underline-offset-2 hover:underline outline-none! focus:outline-none! focus-visible:outline-none! focus-visible:ring-0 shadow-none"
+                >
+                  Fight Rules & Escrow Policy
+                </Link>
               </p>
-            </section>
-
-            <section className="mt-6">
-              <h3 className="text-sm font-bold text-foreground">Also remember</h3>
-              <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted">
-                {FIGHT_PREP_RULE_REMINDERS.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
-
-            <p className="mt-6 border-t border-border pt-5 text-sm text-muted">
-              Full rules:{" "}
-              <Link
-                href="/fight-rules"
-                target="_blank"
-                className="font-medium text-accent underline-offset-2 hover:underline outline-none! focus:outline-none! focus-visible:outline-none! focus-visible:ring-0 shadow-none"
-              >
-                Fight Rules & Escrow Policy
-              </Link>
-            </p>
             </div>
           </div>
 
           <div className="shrink-0 border-t border-border bg-surface-elevated/50 px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-            <p
-              className={`min-w-0 flex-1 text-xs text-muted sm:max-w-[55%] ${
-                hasScrolledToBottomOnce ? "invisible" : ""
-              }`}
-              aria-hidden={hasScrolledToBottomOnce}
-            >
-              Scroll to the bottom of the checklist before continuing.
-            </p>
-            <div className="flex shrink-0 flex-wrap justify-end gap-3">
-            <button
-              ref={cancelButtonRef}
-              type="button"
-              disabled={pending}
-              onClick={onClose}
-              className="inline-flex cursor-pointer items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-muted transition-all hover:bg-surface-elevated hover:text-foreground outline-none! focus:outline-none! focus-visible:outline-none! focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <Button
-              type="button"
-              disabled={pending || !hasScrolledToBottomOnce}
-              onClick={onConfirm}
-              className="outline-none! focus:outline-none! focus-visible:outline-none! focus-visible:ring-0 focus-visible:ring-offset-0"
-            >
-              {pending ? "Please wait…" : confirmLabel}
-            </Button>
-            </div>
+              <p
+                className={`min-w-0 flex-1 text-xs text-muted sm:max-w-[55%] ${
+                  hasScrolledToBottomOnce ? "invisible" : ""
+                }`}
+                aria-hidden={hasScrolledToBottomOnce}
+              >
+                Scroll to the bottom of the checklist before continuing.
+              </p>
+              <div className="flex shrink-0 flex-wrap justify-end gap-3">
+                <button
+                  ref={cancelButtonRef}
+                  type="button"
+                  disabled={pending}
+                  onClick={onClose}
+                  className="inline-flex cursor-pointer items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-muted transition-all hover:bg-surface-elevated hover:text-foreground outline-none! focus:outline-none! focus-visible:outline-none! focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <Button
+                  type="button"
+                  disabled={pending || !hasScrolledToBottomOnce}
+                  onClick={onConfirm}
+                  className="outline-none! focus:outline-none! focus-visible:outline-none! focus-visible:ring-0 focus-visible:ring-offset-0"
+                >
+                  {pending ? "Please wait…" : confirmLabel}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

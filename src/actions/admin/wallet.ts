@@ -9,7 +9,7 @@ import {
 import { adminErrorMessage, type ActionResult } from "@/actions/admin/_result";
 import { AdminAuditAction, logAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/auth";
-import { requireAdminNote } from "@/lib/admin/notes";
+import { requireAdminNote, optionalAdminNote } from "@/lib/admin/notes";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { prisma } from "@/lib/prisma";
 import {
@@ -25,7 +25,7 @@ export async function adminApproveDeposit(
 ): Promise<ActionResult> {
   try {
     const admin = await requireAdmin();
-    const adminNote = requireAdminNote(note);
+    const adminNote = optionalAdminNote(note);
 
     const deposit = await prisma.$transaction(async (tx) => {
       const req = await tx.depositRequest.findUnique({
@@ -125,7 +125,7 @@ export async function adminMarkWithdrawalPaid(
 ): Promise<ActionResult> {
   try {
     const admin = await requireAdmin();
-    const adminNote = requireAdminNote(note);
+    const adminNote = optionalAdminNote(note);
 
     const req = await prisma.$transaction(async (tx) => {
       const row = await tx.withdrawRequest.findUnique({ where: { id: requestId } });

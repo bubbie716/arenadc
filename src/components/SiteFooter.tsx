@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArenaMCLogo } from "@/components/ArenaMCLogo";
 import { DiscordLink } from "@/components/DiscordLink";
 
-export function SiteFooter() {
+export function SiteFooter({ discordInviteUrl }: { discordInviteUrl: string }) {
   return (
     <footer className="border-t border-border py-8">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 text-center text-xs text-muted sm:px-6">
@@ -21,7 +21,7 @@ export function SiteFooter() {
           <Link href="/fight-rules" className="transition-colors hover:text-foreground">
             Fight Rules & Escrow
           </Link>
-          <DiscordLink />
+          <DiscordLink href={discordInviteUrl} />
         </nav>
         <p className="max-w-xl leading-relaxed">
           Not affiliated with Mojang, Microsoft, or DemocracyCraft unless officially authorized.

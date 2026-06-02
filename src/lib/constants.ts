@@ -1,23 +1,42 @@
 export const PLATFORM_FEE_PERCENT = 10;
 
 export const RULESETS = [
-  { id: "no_armor_fists", label: "No Armor Fists" },
-  { id: "no_armor_sword", label: "No Armor Sword" },
-  { id: "diamond_armor", label: "Diamond Armor" },
-  { id: "iron_armor", label: "Iron Armor" },
-  { id: "wood_sword", label: "Wood Sword" },
+  { id: "fists_only", label: "Fists Only" },
+  { id: "wooden_sword_only", label: "Wooden Sword Only" },
+  { id: "diamond_sword_only", label: "Diamond Sword Only" },
+  { id: "iron_armor_iron_sword", label: "Iron Armor + Iron Sword" },
+  { id: "diamond_armor_diamond_sword", label: "Diamond Armor + Diamond Sword" },
+  { id: "diamond_armor_diamond_axe", label: "Diamond Armor + Diamond Axe" },
   { id: "bow_only", label: "Bow Only" },
-  { id: "no_healing", label: "No Healing" },
-  { id: "custom", label: "Custom Rules" },
+  { id: "diamond_armor_diamond_sword_gapples", label: "Diamond Armor + Diamond Sword + Gapples" },
 ] as const;
 
+/** Labels for rulesets stored before the kit list was updated. */
+export const LEGACY_RULESET_LABELS: Record<string, string> = {
+  no_armor_fists: "No Armor Fists",
+  no_armor_sword: "No Armor Sword",
+  diamond_armor: "Diamond Armor",
+  iron_armor: "Iron Armor",
+  wood_sword: "Wood Sword",
+  no_healing: "No Healing",
+  custom: "Custom Rules",
+};
+
 export const FORMATS = [
-  { id: "bo1", label: "BO1" },
-  { id: "bo3", label: "BO3" },
-  { id: "bo5", label: "BO5" },
-  { id: "bo7", label: "BO7" },
+  { id: "sudden_death", label: "Sudden Death" },
+  { id: "best_of_3", label: "Best of 3" },
+  { id: "best_of_5", label: "Best of 5" },
+  { id: "best_of_7", label: "Best of 7" },
   { id: "first_to_10", label: "First to 10" },
 ] as const;
+
+/** Labels for formats stored before the format list was updated. */
+export const LEGACY_FORMAT_LABELS: Record<string, string> = {
+  bo1: "BO1",
+  bo3: "BO3",
+  bo5: "BO5",
+  bo7: "BO7",
+};
 
 export const V1_RULES = [
   "Fighters must wager the exact same RMD amount.",

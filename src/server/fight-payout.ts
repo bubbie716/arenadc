@@ -1,7 +1,7 @@
 import { EscrowStatus, FightStatus, WalletTransactionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { formatFightDisplayId } from "@/lib/fight-display";
+import { getPlatformFeePercent } from "@/server/platform-settings";
 import { TX_WAGER_LOSS } from "@/lib/wallet-tx-types";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { prisma } from "@/lib/prisma";
@@ -73,7 +73,8 @@ export async function payoutFightWinner(
   }
 
   const totalPot = fight.wagerAmount * 2;
-  const fee = Math.floor(totalPot * (PLATFORM_FEE_PERCENT / 100));
+  const platformFeePercent = await getPlatformFeePercent();
+  const fee = Math.floor(totalPot * (platformFeePercent / 100));
   const payout = totalPot - fee;
   const resolvedSummary = options?.resolvedSummary ?? "Fight completed.";
 
@@ -137,12 +138,14 @@ export async function payoutFightWinner(
     });
   });
 
-  await notifyPayoutCompleted({
-    winnerUserId: winnerId,
-    fightId,
-    fightNumber: fight.fightNumber,
-    amount: payout,
-  });
+  if (payout > 0) {
+    await notifyPayoutCompleted({
+      winnerUserId: winnerId,
+      fightId,
+      fightNumber: fight.fightNumber,
+      amount: payout,
+    });
+  }
 
   const fighterIds = [fight.playerAId, fight.playerBId].filter(
     (id): id is string => Boolean(id),

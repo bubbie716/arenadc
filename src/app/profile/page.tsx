@@ -10,6 +10,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { FightStatus } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
+import { resolveDiscordInviteUrl } from "@/components/MaintenanceGuard";
 import { prisma } from "@/lib/prisma";
 import { formatRmd } from "@/lib/utils";
 import { getFighterStatsByUsername } from "@/server/queries/fighter-stats";
@@ -23,7 +24,8 @@ export default async function ProfilePage() {
   if (!user) redirect("/onboarding");
   if (!user.onboardingComplete || !user.minecraftUsername) redirect("/onboarding");
 
-  const [recentFights, wallet, fighterStats, activeFights, rankedNames] = await Promise.all([
+  const [recentFights, wallet, fighterStats, activeFights, rankedNames, discordInviteUrl] =
+    await Promise.all([
     getUserRecentFights(user.minecraftUsername),
     getWalletData(user.id),
     getFighterStatsByUsername(user.minecraftUsername),
@@ -45,6 +47,7 @@ export default async function ProfilePage() {
       },
     }),
     getRankedFighterNames(),
+    resolveDiscordInviteUrl(),
   ]);
 
   const rankIndex = rankedNames.indexOf(user.minecraftUsername);
@@ -63,6 +66,7 @@ export default async function ProfilePage() {
       title="Profile"
       description="Your public fight record and stats on ArenaMC."
       maxWidth="xl"
+      discordInviteUrl={discordInviteUrl}
     >
       <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-surface card-interactive">
         <div className="bg-gradient-to-r from-accent/10 via-transparent to-blue/10 px-6 py-7 sm:flex sm:items-center sm:gap-8">

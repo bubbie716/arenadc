@@ -25,7 +25,6 @@ export function WithdrawRequestModal({
   const [pending, startTransition] = useTransition();
   const [amount, setAmount] = useState("");
   const [minecraftUsername, setMinecraftUsername] = useState(defaultMinecraftUsername);
-  const [note, setNote] = useState("");
 
   if (!open) return null;
 
@@ -44,14 +43,12 @@ export function WithdrawRequestModal({
       const res = await submitWithdrawalRequest({
         amount: parsed,
         minecraftUsername: minecraftUsername.trim(),
-        note: note.trim() || undefined,
       });
       if (!res.ok) {
         onError(res.error);
         return;
       }
       setAmount("");
-      setNote("");
       onClose();
       onSuccess(
         "Withdrawal requested. Your requested amount is locked while the withdrawal is pending.",
@@ -98,16 +95,6 @@ export function WithdrawRequestModal({
             maxLength={16}
             value={minecraftUsername}
             onChange={(e) => setMinecraftUsername(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
-          />
-        </label>
-
-        <label className="mt-4 block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Note (optional)</span>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
             className="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
           />
         </label>

@@ -147,9 +147,17 @@ const NOTIFICATION_TYPE_MAP: Record<DbNotificationType, NotificationType> = {
   PAYOUT_COMPLETED: "payout_completed",
   DEPOSIT_APPROVED: "deposit_approved",
   DEPOSIT_REJECTED: "deposit_rejected",
+  DEPOSIT_REQUESTED: "deposit_requested",
+  DEPOSIT_SUBMITTED: "deposit_submitted",
   WITHDRAWAL_PAID: "withdrawal_paid",
   WITHDRAWAL_REJECTED: "withdrawal_rejected",
   WITHDRAWAL_REQUESTED: "withdrawal_requested",
+  WITHDRAWAL_SUBMITTED: "withdrawal_submitted",
+  ADMIN_BALANCE_ADJUSTMENT: "admin_balance_adjustment",
+  WALLET_FROZEN: "wallet_frozen",
+  WALLET_UNFROZEN: "wallet_unfrozen",
+  ACCOUNT_SUSPENDED: "account_suspended",
+  ACCOUNT_UNSUSPENDED: "account_unsuspended",
 };
 
 export function mapNotification(row: {

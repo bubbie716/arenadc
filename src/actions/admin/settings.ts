@@ -5,6 +5,7 @@ import { adminErrorMessage, type ActionResult } from "@/actions/admin/_result";
 import { AdminAuditAction, logAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/auth";
 import { prisma } from "@/lib/prisma";
+import { invalidatePlatformSettingsCache } from "@/server/platform-settings";
 import { PLATFORM_SETTING_KEYS } from "@/server/queries/admin/settings";
 
 export async function adminUpdatePlatformSettings(
@@ -38,7 +39,12 @@ export async function adminUpdatePlatformSettings(
       metadata: Object.fromEntries(entries),
     });
 
+    invalidatePlatformSettingsCache();
+
     revalidatePath("/admin");
+    revalidatePath("/");
+    revalidatePath("/schedule");
+    revalidatePath("/wallet");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: adminErrorMessage(e) };

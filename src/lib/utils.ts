@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { PLATFORM_FEE_PERCENT } from "./constants";
 import type { FightStatus, FormatId, RulesetId } from "./types";
-import { FORMATS, RULESETS } from "@/lib/constants";
+import { FORMATS, LEGACY_FORMAT_LABELS, LEGACY_RULESET_LABELS, RULESETS } from "@/lib/constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,18 +34,28 @@ export function formatDate(iso: string): string {
 
 /** Countdown text for a future scheduled time only (never "ended"). */
 export function formatStartsIn(iso: string): string {
-  const diff = new Date(iso).getTime() - Date.now();
-  if (diff <= 0) return "Starting soon";
+  return getStartsInCountdownText(iso);
+}
 
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Starts in <1 min";
-  if (mins < 60) return `Starts in ${mins} min`;
+/** Live countdown with seconds, e.g. "Starts in 26:05" or "Starts in 1:03:45". */
+export function getStartsInCountdownText(iso: string, now = Date.now()): string {
+  const diff = new Date(iso).getTime() - now;
+  if (diff <= 0) return "Starting now";
 
-  const hours = Math.floor(mins / 60);
-  if (hours < 48) return `Starts in ${hours}h`;
+  const totalSec = Math.floor(diff / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
 
-  const days = Math.floor(hours / 24);
-  return `Starts in ${days}d`;
+  if (days > 0) {
+    return `Starts in ${days}d ${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+  }
+  if (hours > 0) {
+    return `Starts in ${hours}:${pad(mins)}:${pad(secs)}`;
+  }
+  return `Starts in ${pad(mins)}:${pad(secs)}`;
 }
 
 /** Relative "ended" text — only for completed fights. */
@@ -137,21 +147,49 @@ export function formatRelativeTime(iso: string): string {
   return formatStartsIn(iso);
 }
 
-export function getRulesetLabel(id: RulesetId): string {
-  return RULESETS.find((r) => r.id === id)?.label ?? id;
+export function getRulesetLabel(id: RulesetId | string): string {
+  return (
+    RULESETS.find((r) => r.id === id)?.label ??
+    LEGACY_RULESET_LABELS[id] ??
+    id
+  );
 }
 
-export function getFormatLabel(id: FormatId): string {
-  return FORMATS.find((f) => f.id === id)?.label ?? id;
+export function getFormatLabel(id: FormatId | string): string {
+  return FORMATS.find((f) => f.id === id)?.label ?? LEGACY_FORMAT_LABELS[id] ?? id;
+}
+
+export function getFormatMaxRounds(format: FormatId | string): number {
+  switch (format) {
+    case "sudden_death":
+    case "bo1":
+      return 1;
+    case "best_of_3":
+    case "bo3":
+      return 3;
+    case "best_of_5":
+    case "bo5":
+      return 5;
+    case "best_of_7":
+    case "bo7":
+      return 7;
+    case "first_to_10":
+      return 10;
+    default:
+      return 3;
+  }
 }
 
 export function getArenaName(id: string, arenaName?: string): string {
   return arenaName ?? "Unknown Arena";
 }
 
-export function calculatePot(wagerPerFighter: number) {
+export function calculatePot(
+  wagerPerFighter: number,
+  platformFeePercent: number = PLATFORM_FEE_PERCENT,
+) {
   const totalPot = wagerPerFighter * 2;
-  const platformFee = Math.floor(totalPot * (PLATFORM_FEE_PERCENT / 100));
+  const platformFee = Math.floor(totalPot * (platformFeePercent / 100));
   const winnerPayout = totalPot - platformFee;
   return { totalPot, platformFee, winnerPayout };
 }

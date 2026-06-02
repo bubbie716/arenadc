@@ -7,10 +7,17 @@ import {
   WithdrawRequestStatus,
 } from "@prisma/client";
 import { requireOnboardedUser } from "@/lib/auth/session";
+import { assertWalletTransactionsAllowed } from "@/lib/account-restrictions";
+import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import { assertAvailableForWithdraw, postLedgerEntry } from "@/lib/wallet/ledger";
 import { prisma } from "@/lib/prisma";
 import type { ActionResult } from "@/actions/fights";
-import { notifyAdminsWithdrawalRequested } from "@/server/notifications/wallet";
+import {
+  notifyAdminsDepositRequested,
+  notifyAdminsWithdrawalRequested,
+  notifyDepositSubmitted,
+  notifyWithdrawalSubmitted,
+} from "@/server/notifications/wallet";
 
 const MIN_AMOUNT = 100;
 const MAX_DEPOSIT = 1_000_000;
@@ -20,15 +27,12 @@ const MAX_PENDING_WITHDRAWS = 3;
 export async function submitDepositRequest(input: {
   amount: number;
   proofImageUrl: string;
-  note?: string;
 }): Promise<ActionResult<{ requestId: string }>> {
   try {
     const user = await requireOnboardedUser();
-    if (user.walletFrozen) {
-      return { ok: false, error: "Your wallet is frozen. Contact support." };
-    }
-    if (user.suspendedAt) {
-      return { ok: false, error: "Your account is suspended." };
+    const walletCheck = assertWalletTransactionsAllowed(user);
+    if (!walletCheck.ok) {
+      return { ok: false, error: walletCheck.error };
     }
 
     const amount = Math.floor(input.amount);
@@ -48,16 +52,20 @@ export async function submitDepositRequest(input: {
       return { ok: false, error: "You have too many pending deposit requests." };
     }
 
-    const note = input.note?.trim() || null;
-
     const request = await prisma.depositRequest.create({
       data: {
         userId: user.id,
         amount,
         proofImageUrl,
-        note,
         status: DepositRequestStatus.PENDING,
       },
+    });
+
+    await notifyDepositSubmitted(user.id, amount);
+    await notifyAdminsDepositRequested({
+      userId: user.id,
+      amount,
+      minecraftUsername: user.minecraftUsername ?? user.discordUsername,
     });
 
     revalidatePath("/wallet");
@@ -71,15 +79,17 @@ export async function submitDepositRequest(input: {
 export async function submitWithdrawalRequest(input: {
   amount: number;
   minecraftUsername: string;
-  note?: string;
 }): Promise<ActionResult<{ requestId: string }>> {
   try {
     const user = await requireOnboardedUser();
-    if (user.walletFrozen) {
-      return { ok: false, error: "Your wallet is frozen. Contact support." };
+    const walletCheck = assertWalletTransactionsAllowed(user);
+    if (!walletCheck.ok) {
+      return { ok: false, error: walletCheck.error };
     }
-    if (user.suspendedAt) {
-      return { ok: false, error: "Your account is suspended." };
+
+    const platformSettings = await getResolvedPlatformSettings();
+    if (!platformSettings.withdrawalsEnabled) {
+      return { ok: false, error: "Withdrawals are temporarily disabled." };
     }
 
     const amount = Math.floor(input.amount);
@@ -104,8 +114,6 @@ export async function submitWithdrawalRequest(input: {
       return { ok: false, error: "You already have pending withdrawal requests." };
     }
 
-    const note = input.note?.trim() || null;
-
     const request = await prisma.$transaction(async (tx) => {
       const fresh = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
       if (fresh.walletBalance < amount) {
@@ -117,7 +125,6 @@ export async function submitWithdrawalRequest(input: {
           userId: user.id,
           amount,
           minecraftUsername,
-          note,
           status: WithdrawRequestStatus.PENDING,
         },
       });
@@ -133,8 +140,8 @@ export async function submitWithdrawalRequest(input: {
       return created;
     });
 
+    await notifyWithdrawalSubmitted(user.id, amount);
     await notifyAdminsWithdrawalRequested({
-      requestId: request.id,
       userId: user.id,
       amount,
       minecraftUsername,

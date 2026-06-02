@@ -2,7 +2,6 @@ import { FightStatus as DbFightStatus, type Prisma } from "@prisma/client";
 import { fightInclude, mapFightToUI } from "@/lib/mappers";
 import {
   homepageCompletedVisibleSince,
-  homepageFeedWhere,
   homepageFightWhere,
 } from "@/lib/fight-statuses";
 import { prisma } from "@/lib/prisma";
@@ -62,7 +61,22 @@ export async function getFightsStartingSoon(limit = 4): Promise<Fight[]> {
 
 export async function getBiggestPotFights(limit = 4): Promise<Fight[]> {
   return loadFights({
-    where: homepageFeedWhere(),
+    where: {
+      AND: [
+        homepageFightWhere(),
+        {
+          status: {
+            notIn: [
+              DbFightStatus.COMPLETED,
+              DbFightStatus.CANCELLED,
+              DbFightStatus.REFUNDED,
+              DbFightStatus.DECLINED,
+            ],
+          },
+        },
+        { wagerAmount: { gt: 0 } },
+      ],
+    },
     include: fightInclude,
     orderBy: { wagerAmount: "desc" },
     take: limit,

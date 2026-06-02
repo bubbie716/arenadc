@@ -99,6 +99,7 @@ export function AcceptFightPanel({
         pending={pending}
         context="accept"
         fightDisplayId={fightDisplayId}
+        wagerAmount={wagerAmount}
       />
     </section>
   );

@@ -1,10 +1,28 @@
 import { NotificationType } from "@prisma/client";
-import { createNotification, createNotifications } from "@/server/notifications";
+import { sendNotification, sendNotifications } from "@/server/notifications/dispatch";
 import { prisma } from "@/lib/prisma";
 import { formatRmd } from "@/lib/utils";
 
+export async function notifyDepositSubmitted(userId: string, amount: number) {
+  return sendNotification({
+    userId,
+    type: NotificationType.DEPOSIT_SUBMITTED,
+    title: "Deposit submitted",
+    message: `Your deposit request for ${formatRmd(amount)} is pending admin review.`,
+  });
+}
+
+export async function notifyWithdrawalSubmitted(userId: string, amount: number) {
+  return sendNotification({
+    userId,
+    type: NotificationType.WITHDRAWAL_SUBMITTED,
+    title: "Withdrawal submitted",
+    message: `Your withdrawal of ${formatRmd(amount)} is pending. Funds are locked until processed.`,
+  });
+}
+
 export async function notifyDepositApproved(userId: string, amount: number) {
-  return createNotification({
+  return sendNotification({
     userId,
     type: NotificationType.DEPOSIT_APPROVED,
     title: "Deposit approved",
@@ -13,7 +31,7 @@ export async function notifyDepositApproved(userId: string, amount: number) {
 }
 
 export async function notifyDepositRejected(userId: string, amount: number, adminNote: string) {
-  return createNotification({
+  return sendNotification({
     userId,
     type: NotificationType.DEPOSIT_REJECTED,
     title: "Deposit rejected",
@@ -26,7 +44,7 @@ export async function notifyWithdrawalPaid(
   amount: number,
   minecraftUsername: string,
 ) {
-  return createNotification({
+  return sendNotification({
     userId,
     type: NotificationType.WITHDRAWAL_PAID,
     title: "Withdrawal completed",
@@ -35,7 +53,7 @@ export async function notifyWithdrawalPaid(
 }
 
 export async function notifyWithdrawalRejected(userId: string, amount: number, adminNote: string) {
-  return createNotification({
+  return sendNotification({
     userId,
     type: NotificationType.WITHDRAWAL_REJECTED,
     title: "Withdrawal rejected",
@@ -43,25 +61,52 @@ export async function notifyWithdrawalRejected(userId: string, amount: number, a
   });
 }
 
-export async function notifyAdminsWithdrawalRequested(params: {
-  requestId: string;
+async function notifyAdmins(
+  type: NotificationType,
+  title: string,
+  message: string,
+  excludeUserId?: string,
+) {
+  const admins = await prisma.user.findMany({
+    where: {
+      isAdmin: true,
+      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+    },
+    select: { id: true },
+  });
+  if (admins.length === 0) return;
+  await sendNotifications(
+    admins.map((admin) => ({
+      userId: admin.id,
+      type,
+      title,
+      message,
+    })),
+  );
+}
+
+export async function notifyAdminsDepositRequested(params: {
   userId: string;
   amount: number;
   minecraftUsername: string;
 }) {
-  const admins = await prisma.user.findMany({
-    where: { isAdmin: true },
-    select: { id: true },
-  });
+  await notifyAdmins(
+    NotificationType.DEPOSIT_REQUESTED,
+    "New deposit request",
+    `${params.minecraftUsername} submitted a deposit request for ${formatRmd(params.amount)}.`,
+    params.userId,
+  );
+}
 
-  if (admins.length === 0) return;
-
-  await createNotifications(
-    admins.map((admin) => ({
-      userId: admin.id,
-      type: NotificationType.WITHDRAWAL_REQUESTED,
-      title: "New withdrawal request",
-      message: `${params.minecraftUsername} requested ${formatRmd(params.amount)}.`,
-    })),
+export async function notifyAdminsWithdrawalRequested(params: {
+  userId: string;
+  amount: number;
+  minecraftUsername: string;
+}) {
+  await notifyAdmins(
+    NotificationType.WITHDRAWAL_REQUESTED,
+    "New withdrawal request",
+    `${params.minecraftUsername} requested ${formatRmd(params.amount)}.`,
+    params.userId,
   );
 }

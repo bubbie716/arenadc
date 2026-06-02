@@ -38,9 +38,17 @@ export type NotificationType =
   | "payout_completed"
   | "deposit_approved"
   | "deposit_rejected"
+  | "deposit_requested"
+  | "deposit_submitted"
   | "withdrawal_paid"
   | "withdrawal_rejected"
-  | "withdrawal_requested";
+  | "withdrawal_requested"
+  | "withdrawal_submitted"
+  | "admin_balance_adjustment"
+  | "wallet_frozen"
+  | "wallet_unfrozen"
+  | "account_suspended"
+  | "account_unsuspended";
 
 export interface AppNotification {
   id: string;
@@ -53,16 +61,21 @@ export interface AppNotification {
 }
 
 export type RulesetId =
-  | "no_armor_fists"
-  | "no_armor_sword"
-  | "diamond_armor"
-  | "iron_armor"
-  | "wood_sword"
+  | "fists_only"
+  | "wooden_sword_only"
+  | "diamond_sword_only"
+  | "iron_armor_iron_sword"
+  | "diamond_armor_diamond_sword"
+  | "diamond_armor_diamond_axe"
   | "bow_only"
-  | "no_healing"
-  | "custom";
+  | "diamond_armor_diamond_sword_gapples";
 
-export type FormatId = "bo1" | "bo3" | "bo5" | "bo7" | "first_to_10";
+export type FormatId =
+  | "sudden_death"
+  | "best_of_3"
+  | "best_of_5"
+  | "best_of_7"
+  | "first_to_10";
 
 export interface Ruleset {
   id: RulesetId;
@@ -157,6 +170,9 @@ export interface CommunityPick {
   fightId: string;
   playerAPercent: number;
   playerBPercent: number;
+  totalVotes: number;
+  userVote: "a" | "b" | null;
+  canVote: boolean;
 }
 
 export interface PendingEscrow {
@@ -193,7 +209,6 @@ export interface WalletDepositRequest {
   id: string;
   amount: number;
   proofImageUrl: string;
-  note: string | null;
   status: WalletRequestStatus;
   adminNote: string | null;
   createdAt: string;
@@ -204,7 +219,6 @@ export interface WalletWithdrawRequest {
   id: string;
   amount: number;
   minecraftUsername: string;
-  note: string | null;
   status: WalletRequestStatus;
   adminNote: string | null;
   createdAt: string;

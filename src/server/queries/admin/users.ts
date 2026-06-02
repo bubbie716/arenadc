@@ -17,6 +17,7 @@ export type AdminUserRow = {
   isAdmin: boolean;
   walletFrozen: boolean;
   suspended: boolean;
+  notificationsMuted: boolean;
 };
 
 export async function getAdminUsers(): Promise<AdminUserRow[]> {
@@ -30,6 +31,7 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
       isAdmin: true,
       walletFrozen: true,
       suspendedAt: true,
+      notificationsMuted: true,
       createdAt: true,
     },
   });
@@ -121,6 +123,7 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
     isAdmin: user.isAdmin,
     walletFrozen: user.walletFrozen,
     suspended: Boolean(user.suspendedAt),
+    notificationsMuted: user.notificationsMuted,
   }));
 }
 
@@ -136,6 +139,7 @@ export async function getAdminUserDetail(userId: string) {
       walletFrozen: true,
       suspendedAt: true,
       isAdmin: true,
+      notificationsMuted: true,
       createdAt: true,
     },
   });

@@ -1,14 +1,14 @@
-import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { calculatePot, formatRmd } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 interface PotShowcaseProps {
   wagerAmount: number;
+  platformFeePercent: number;
   className?: string;
 }
 
-export function PotShowcase({ wagerAmount, className }: PotShowcaseProps) {
-  const { totalPot, platformFee, winnerPayout } = calculatePot(wagerAmount);
+export function PotShowcase({ wagerAmount, platformFeePercent, className }: PotShowcaseProps) {
+  const { totalPot, platformFee, winnerPayout } = calculatePot(wagerAmount, platformFeePercent);
 
   return (
     <section
@@ -40,7 +40,7 @@ export function PotShowcase({ wagerAmount, className }: PotShowcaseProps) {
         </div>
         <div className="flex min-h-[7.5rem] flex-col justify-center rounded-2xl border border-border bg-surface-elevated p-5 sm:p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">
-            Platform Fee ({PLATFORM_FEE_PERCENT}%)
+            Platform Fee ({platformFeePercent}%)
           </p>
           <p className="mt-2 text-2xl font-bold text-muted tabular-nums">
             {formatRmd(platformFee)}

@@ -1,5 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { FightStatus } from "@/lib/types";
-import { cn, getFightStatusDisplay } from "@/lib/utils";
+import { cn, formatDate, getFightStatusDisplay, getStartsInCountdownText } from "@/lib/utils";
 
 interface FightCountdownProps {
   scheduledAt: string;
@@ -18,11 +21,25 @@ export function FightCountdown({
   align = "right",
   className,
 }: FightCountdownProps) {
+  const isLiveCountdown = status === "confirmed" || status === "scheduled";
+  const [livePrimary, setLivePrimary] = useState(() =>
+    isLiveCountdown ? getStartsInCountdownText(scheduledAt) : "",
+  );
+
+  useEffect(() => {
+    if (!isLiveCountdown) return;
+    setLivePrimary(getStartsInCountdownText(scheduledAt));
+    const id = setInterval(() => setLivePrimary(getStartsInCountdownText(scheduledAt)), 1000);
+    return () => clearInterval(id);
+  }, [scheduledAt, isLiveCountdown]);
+
   const { primary, subtext } = getFightStatusDisplay({
     status,
     scheduledAt,
     completedAt,
   });
+
+  const displayPrimary = isLiveCountdown ? livePrimary : primary;
 
   const sizeClass = {
     sm: { primary: "text-xs font-semibold", sub: "text-[10px]" },
@@ -41,14 +58,17 @@ export function FightCountdown({
       <p
         className={cn(
           sizeClass.primary,
+          "tabular-nums",
           isUpcoming ? "text-foreground" : "text-muted",
           (status === "disputed" || status === "awaiting_recordings") && "text-danger",
           status === "awaiting_result" && "text-warning",
         )}
       >
-        {primary}
+        {displayPrimary}
       </p>
-      <p className={cn(sizeClass.sub, "text-muted")}>{subtext}</p>
+      <p className={cn(sizeClass.sub, "text-muted")}>
+        {isLiveCountdown ? `Scheduled ${formatDate(scheduledAt)}` : subtext}
+      </p>
     </div>
   );
 }

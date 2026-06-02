@@ -20,7 +20,7 @@ function tabHref(tab: FightEscrowTab) {
   return tab === "fight-rules" ? "/fight-rules" : "/fight-rules?tab=escrow";
 }
 
-export function FightEscrowPolicyTabs() {
+export function FightEscrowPolicyTabs({ discordInviteUrl }: { discordInviteUrl: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parseFightEscrowTab(searchParams.get("tab"));
@@ -39,6 +39,7 @@ export function FightEscrowPolicyTabs() {
       title="Fight Rules & Escrow Policy"
       description="Competition rules, escrow, disputes, evidence, and payout policies for ArenaMC wagered fights."
       maxWidth="lg"
+      discordInviteUrl={discordInviteUrl}
     >
       <div
         className="-mt-2 mb-8 flex gap-1 rounded-xl border border-border bg-surface-elevated p-1"
@@ -83,7 +84,7 @@ export function FightEscrowPolicyTabs() {
         />
       </div>
 
-      <LegalDocumentFooter />
+      <LegalDocumentFooter discordInviteUrl={discordInviteUrl} />
     </PageShell>
   );
 }

@@ -1,11 +1,13 @@
 import { Navbar } from "./Navbar";
 import { SiteFooter } from "./SiteFooter";
+import { getDiscordInviteUrlFallback } from "@/lib/discord";
 
 interface PageShellProps {
   children: React.ReactNode;
   title?: string;
   description?: string;
   maxWidth?: "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
+  discordInviteUrl?: string;
 }
 
 const maxWidthClass = {
@@ -22,6 +24,7 @@ export function PageShell({
   title,
   description,
   maxWidth = "2xl",
+  discordInviteUrl = getDiscordInviteUrlFallback(),
 }: PageShellProps) {
   return (
     <div className="flex min-h-dvh flex-col">
@@ -41,7 +44,7 @@ export function PageShell({
         )}
         {children}
       </main>
-      <SiteFooter />
+      <SiteFooter discordInviteUrl={discordInviteUrl} />
     </div>
   );
 }

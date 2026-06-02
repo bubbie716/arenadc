@@ -1,9 +1,10 @@
 import type { Fight } from "@/lib/types";
+import { LiveStartsInCountdown } from "@/components/LiveStartsInCountdown";
 import { getFightLocationLabel } from "@/lib/fight-location";
 import {
   formatEndedAgo,
-  formatStartsIn,
   getFormatLabel,
+  getFormatMaxRounds,
   getRulesetLabel,
 } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ interface FightTimelineProps {
 export function FightTimeline({ fight }: FightTimelineProps) {
   let headline = "";
   let detail = "";
+  let showLiveCountdown = false;
 
   switch (fight.status) {
     case "pending_acceptance":
@@ -27,9 +29,11 @@ export function FightTimeline({ fight }: FightTimelineProps) {
       break;
     case "confirmed":
     case "scheduled":
+      showLiveCountdown = true;
+      detail = `Fight location: ${getFightLocationLabel(fight.fightLocation, fight.arenaName)}`;
+      break;
     case "open":
-      headline =
-        fight.status === "open" ? "Open Challenge" : formatStartsIn(fight.scheduledAt);
+      headline = "Open Challenge";
       detail = `Fight location: ${getFightLocationLabel(fight.fightLocation, fight.arenaName)}`;
       break;
     case "in_progress":
@@ -71,12 +75,7 @@ export function FightTimeline({ fight }: FightTimelineProps) {
 
   if (fight.status === "in_progress" && fight.round) {
     const formatLabel = getFormatLabel(fight.format);
-    const maxRounds =
-      fight.format === "bo1"
-        ? 1
-        : fight.format === "first_to_10"
-          ? 10
-          : parseInt(fight.format.replace("bo", ""), 10) || 3;
+    const maxRounds = getFormatMaxRounds(fight.format);
     headline = `Round ${fight.round} of ${maxRounds}`;
     detail = `${formatLabel} · ${getRulesetLabel(fight.ruleset)}`;
   }
@@ -85,7 +84,13 @@ export function FightTimeline({ fight }: FightTimelineProps) {
     <Card className="mb-8 border-accent/20">
       <CardHeader className="pb-2">
         <p className="text-xs font-bold uppercase tracking-widest text-muted">Status</p>
-        <CardTitle className="text-2xl">{headline}</CardTitle>
+        <CardTitle className="text-2xl">
+          {showLiveCountdown ? (
+            <LiveStartsInCountdown scheduledAt={fight.scheduledAt} />
+          ) : (
+            headline
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted">{detail}</p>

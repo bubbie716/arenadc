@@ -1,16 +1,14 @@
 import Link from "next/link";
-import { getDiscordInviteUrl } from "@/lib/discord";
 
 interface LegalDocumentFooterProps {
+  discordInviteUrl: string;
   note?: React.ReactNode;
 }
 
-export function LegalDocumentFooter({ note }: LegalDocumentFooterProps) {
+export function LegalDocumentFooter({ discordInviteUrl, note }: LegalDocumentFooterProps) {
   if (note) {
     return <p className="mt-10 text-sm text-muted">{note}</p>;
   }
-
-  const discordUrl = getDiscordInviteUrl();
 
   return (
     <p className="mt-10 text-sm text-muted">
@@ -28,7 +26,7 @@ export function LegalDocumentFooter({ note }: LegalDocumentFooterProps) {
       </Link>
       , or join the{" "}
       <a
-        href={discordUrl}
+        href={discordInviteUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="text-accent hover:underline"
