@@ -1,9 +1,11 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { extensionForMime, validateProofImageFile } from "@/lib/wallet/proof-upload";
+import {
+  extensionForMime,
+  validateProofImageFile,
+} from "@/lib/wallet/proof-upload";
+import { storeProofImage } from "@/lib/wallet/proof-storage";
 
 export const runtime = "nodejs";
 
@@ -25,17 +27,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
-  const ext = extensionForMime(file.type);
-  const filename = `${session.user.dbUserId}-${randomUUID()}.${ext}`;
-  const relativeDir = path.join("uploads", "wallet-proofs");
-  const absoluteDir = path.join(process.cwd(), "public", relativeDir);
+  try {
+    const ext = extensionForMime(file.type);
+    const filename = `${session.user.dbUserId}-${randomUUID()}.${ext}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-  await mkdir(absoluteDir, { recursive: true });
+    const proofImageUrl = await storeProofImage({
+      filename,
+      buffer,
+      contentType: file.type,
+    });
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(absoluteDir, filename), buffer);
-
-  const proofImageUrl = `/${relativeDir.replace(/\\/g, "/")}/${filename}`;
-
-  return NextResponse.json({ proofImageUrl });
+    return NextResponse.json({ proofImageUrl });
+  } catch (e) {
+    const message =
+      e instanceof Error ? e.message : "Could not upload proof image.";
+    console.error("Wallet proof upload failed:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

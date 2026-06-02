@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
         hostname: "api.mcheads.org",
         pathname: "/head/**",
       },
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+        pathname: "/**",
+      },
     ],
   },
 };

@@ -22,6 +22,7 @@ cp .env.example .env
    - `AUTH_SECRET` — `openssl rand -base64 32`
    - `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` — [Discord Developer Portal](https://discord.com/developers/applications)
    - Redirect URL: `http://localhost:3000/api/auth/callback/discord`
+   - `BLOB_READ_WRITE_TOKEN` — required on Vercel for deposit proof uploads ([Vercel Blob](https://vercel.com/docs/storage/vercel-blob); local dev uses `public/uploads/` when unset)
 
 3. Push schema and seed arenas:
 

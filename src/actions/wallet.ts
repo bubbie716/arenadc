@@ -18,6 +18,7 @@ import {
   notifyDepositSubmitted,
   notifyWithdrawalSubmitted,
 } from "@/server/notifications/wallet";
+import { isValidProofImageUrl } from "@/lib/wallet/proof-storage";
 
 const MIN_AMOUNT = 100;
 const MAX_DEPOSIT = 1_000_000;
@@ -41,7 +42,7 @@ export async function submitDepositRequest(input: {
     }
 
     const proofImageUrl = input.proofImageUrl?.trim();
-    if (!proofImageUrl || !proofImageUrl.startsWith("/uploads/wallet-proofs/")) {
+    if (!proofImageUrl || !isValidProofImageUrl(proofImageUrl)) {
       return { ok: false, error: "Payment proof image is required." };
     }
 
