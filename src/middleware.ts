@@ -4,11 +4,22 @@ import type { NextRequest } from "next/server";
 
 const PROTECTED_PREFIXES = ["/schedule", "/wallet", "/profile", "/admin"];
 
+function authSecret() {
+  return process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+}
+
+function sessionCookieName() {
+  return process.env.NODE_ENV === "production"
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = await getToken({
     req,
-    secret: process.env.AUTH_SECRET,
+    secret: authSecret(),
+    cookieName: sessionCookieName(),
   });
 
   const isLoggedIn = Boolean(token?.dbUserId);

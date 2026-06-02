@@ -60,10 +60,16 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
   }, [searchParams, discordConnected]);
 
   useEffect(() => {
-    if (state.onboardingComplete) {
-      router.replace("/");
-    }
-  }, [state.onboardingComplete, router]);
+    if (!state.onboardingComplete) return;
+
+    const callbackUrl = searchParams.get("callbackUrl");
+    const destination =
+      callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//")
+        ? callbackUrl
+        : "/";
+
+    router.replace(destination);
+  }, [state.onboardingComplete, router, searchParams]);
 
   function goToStep(step: number) {
     setError(null);
