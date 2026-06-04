@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
+import { AdminReturnTracker } from "@/components/admin/AdminReturnTracker";
 import { MaintenanceGuard } from "@/components/MaintenanceGuard";
 import { ServerConfigProvider } from "@/components/providers/ServerConfigProvider";
 import { SessionProvider } from "@/components/providers/SessionProvider";
@@ -57,6 +59,9 @@ export default async function RootLayout({
       >
         <ServerConfigProvider config={serverConfig}>
           <SessionProvider>
+            <Suspense fallback={null}>
+              <AdminReturnTracker />
+            </Suspense>
             <MaintenanceGuard>{children}</MaintenanceGuard>
           </SessionProvider>
         </ServerConfigProvider>

@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
+import { useServerConfig } from "@/components/providers/ServerConfigProvider";
+import { formatFightPublicIdExample } from "@/lib/fight-display";
 import {
+  fightPrepPublicId,
   fightPrepIntro,
   getFightPrepReminders,
   getFightPrepSteps,
   type FightPrepContext,
-} from "@/lib/fight-prep-reminders";
+} from "@/lib/server-rules/fight-prep";
 
 interface FightPrepRemindersModalProps {
   open: boolean;
@@ -17,7 +20,9 @@ interface FightPrepRemindersModalProps {
   confirmLabel: string;
   pending?: boolean;
   context: FightPrepContext;
+  /** Public fight code (e.g. ArenaSW-0001). */
   fightDisplayId?: string;
+  fightNumber?: number | null;
   wagerAmount?: number;
 }
 
@@ -29,11 +34,17 @@ export function FightPrepRemindersModal({
   pending = false,
   context,
   fightDisplayId,
+  fightNumber,
   wagerAmount = 0,
 }: FightPrepRemindersModalProps) {
+  const config = useServerConfig();
   const isFreeFight = wagerAmount === 0;
-  const preFightSteps = getFightPrepSteps(isFreeFight);
-  const ruleReminders = getFightPrepReminders(isFreeFight);
+  const preFightSteps = getFightPrepSteps(config, isFreeFight);
+  const ruleReminders = getFightPrepReminders(config, isFreeFight);
+  const exampleFightId =
+    fightDisplayId ??
+    fightPrepPublicId(config, fightNumber) ??
+    formatFightPublicIdExample(config.id);
 
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
@@ -89,6 +100,25 @@ export function FightPrepRemindersModal({
     if (!pending) onClose();
   }
 
+  function fightIdLabel(stepCode: string | undefined): ReactNode {
+    if (stepCode !== "Fight ID") return null;
+    if (exampleFightId && !exampleFightId.includes("????")) {
+      return (
+        <>
+          Example:{" "}
+          <span className="rounded-md border border-border bg-surface-elevated px-2 py-1 font-mono">
+            {exampleFightId}
+          </span>
+        </>
+      );
+    }
+    return (
+      <span className="font-sans text-muted">
+        Your Fight ID appears on the fight page after scheduling.
+      </span>
+    );
+  }
+
   return (
     <dialog
       ref={dialogRef}
@@ -114,7 +144,7 @@ export function FightPrepRemindersModal({
               {isFreeFight ? "Free fight reminder" : "Fight prep & rules reminder"}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              {fightPrepIntro(context, isFreeFight)}
+              {fightPrepIntro(config, context, isFreeFight)}
             </p>
             <p className="mt-3 text-xs font-medium text-accent">
               Scroll through the checklist below — required before you continue.
@@ -156,21 +186,10 @@ export function FightPrepRemindersModal({
                       <div className="min-w-0">
                         <p className="font-semibold text-foreground">{step.title}</p>
                         <p className="mt-1 text-sm leading-relaxed text-muted">{step.detail}</p>
-                        {"code" in step && step.code ? (
+                        {step.code ? (
                           <p className="mt-2 font-mono text-xs text-foreground">
                             {step.code === "Fight ID" ? (
-                              fightDisplayId ? (
-                                <>
-                                  Example:{" "}
-                                  <span className="rounded-md border border-border bg-surface-elevated px-2 py-1">
-                                    {fightDisplayId}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="font-sans text-muted">
-                                  Your Fight ID appears on the fight page after scheduling.
-                                </span>
-                              )
+                              fightIdLabel(step.code)
                             ) : (
                               <span className="rounded-md border border-border bg-surface-elevated px-2 py-1">
                                 {step.code}
@@ -197,9 +216,20 @@ export function FightPrepRemindersModal({
                 <section className="mt-6 rounded-xl border border-blue/25 bg-blue/5 p-4">
                   <p className="text-sm font-bold text-foreground">You must record your POV</p>
                   <p className="mt-1 text-sm leading-relaxed text-muted">
-                    Recording is required for all wagered fights — not optional. If the result is
-                    disputed, both fighters must submit POV links within{" "}
-                    <span className="font-semibold text-foreground">15 minutes</span>.
+                    {config.rulesetKind === "openworld" ? (
+                      <>
+                        POV is required for wagered fights when disputes, result disagreements, or
+                        admin review occur. Submit POV links within{" "}
+                        <span className="font-semibold text-foreground">15 minutes</span> when
+                        disputed.
+                      </>
+                    ) : (
+                      <>
+                        Recording is required for all wagered fights — not optional. If the result
+                        is disputed, both fighters must submit POV links within{" "}
+                        <span className="font-semibold text-foreground">15 minutes</span>.
+                      </>
+                    )}
                   </p>
                 </section>
               )}

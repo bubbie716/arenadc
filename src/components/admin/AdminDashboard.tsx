@@ -24,6 +24,7 @@ import {
   AdminActionsDropdown,
   AdminConfirmModal,
 } from "@/components/admin/AdminConfirmModal";
+import { AdminReturnButton } from "@/components/admin/AdminReturnButton";
 import { MinecraftHead } from "@/components/MinecraftHead";
 import { Button } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
@@ -119,10 +120,13 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
   return (
     <div className="space-y-8 pb-16">
       <header className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent">Operations</p>
-          <h1 className="text-3xl font-black tracking-tight">Admin Control Center</h1>
-          <p className="mt-1 text-sm text-muted">ArenaMC platform operations dashboard.</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:flex-1">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-accent">Operations</p>
+            <h1 className="text-3xl font-black tracking-tight">Admin Control Center</h1>
+            <p className="mt-1 text-sm text-muted">ArenaMC platform operations dashboard.</p>
+          </div>
+          <AdminReturnButton />
         </div>
         <nav className="flex max-w-full flex-wrap gap-1 rounded-xl border border-border bg-surface p-1">
           {ADMIN_TABS.map((t) => (

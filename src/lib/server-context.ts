@@ -1,7 +1,8 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import {
   DEFAULT_SERVER_ID,
   getServerConfig,
+  resolveServerIdForRequest,
   resolveServerIdFromHost,
   type ServerConfig,
   type ServerId,
@@ -19,7 +20,11 @@ export async function getServerId(): Promise<ServerId> {
   }
 
   const host = headerList.get("host") ?? "";
-  return resolveServerIdFromHost(host);
+  const cookieStore = await cookies();
+  return resolveServerIdForRequest({
+    host,
+    serverCookie: cookieStore.get(SERVER_ID_COOKIE)?.value,
+  });
 }
 
 function isServerIdHeader(value: string): value is ServerId {

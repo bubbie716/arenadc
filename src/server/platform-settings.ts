@@ -1,5 +1,6 @@
 import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { getActiveServerConfig } from "@/lib/server-context";
+import type { ServerConfig, ServerId } from "@/lib/server-config";
 import {
   getPlatformSettings,
   type PlatformSettingsMap,
@@ -19,6 +20,23 @@ export type ResolvedPlatformSettings = {
 };
 
 const DEFAULT_DISCORD_INVITE = "https://discord.gg/arenamc";
+
+/** Pre-123lucas11 SW default stored in PlatformSetting before server-config was updated. */
+const STALE_DEPOSIT_ACCOUNT: Partial<Record<ServerId, string>> = {
+  sw: "ArenaSW",
+};
+
+function resolveDepositAccountName(
+  config: ServerConfig,
+  stored: string,
+): string {
+  const trimmed = stored.trim();
+  const stale = STALE_DEPOSIT_ACCOUNT[config.id];
+  if (trimmed && stale && trimmed === stale) {
+    return config.depositAccountName;
+  }
+  return trimmed || config.depositAccountName;
+}
 
 const caches = new Map<string, { at: number; raw: PlatformSettingsMap }>();
 const CACHE_TTL_MS = 15_000;
@@ -65,7 +83,10 @@ function parseNonNegativeInt(value: string, fallback: number): number {
 export async function getResolvedPlatformSettings(): Promise<ResolvedPlatformSettings> {
   const config = await getActiveServerConfig();
   const raw = await getRawSettings();
-  const depositAccountName = raw.deposit_account_name.trim() || config.depositAccountName;
+  const depositAccountName = resolveDepositAccountName(
+    config,
+    raw.deposit_account_name,
+  );
   const discordInviteUrl = raw.discord_invite_url.trim() || DEFAULT_DISCORD_INVITE;
 
   return {

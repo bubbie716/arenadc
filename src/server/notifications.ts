@@ -1,6 +1,7 @@
 import { NotificationType } from "@prisma/client";
-import { formatFightDisplayId } from "@/lib/fight-display";
+import { formatFightPublicId } from "@/lib/fight-display";
 import { getActiveServerConfig } from "@/lib/server-context";
+import { getScopedServerId } from "@/server/scope";
 import { mapNotification } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
 import type { AppNotification } from "@/lib/types";
@@ -10,7 +11,6 @@ import {
   sendNotifications,
   type NotificationInput,
 } from "@/server/notifications/dispatch";
-import { getScopedServerId } from "@/server/scope";
 
 export type CreateNotificationInput = NotificationInput;
 
@@ -27,6 +27,11 @@ export async function createNotifications(inputs: CreateNotificationInput[]) {
   await sendNotifications(inputs);
 }
 
+async function fightLabel(fightNumber: number) {
+  const serverId = await getScopedServerId();
+  return formatFightPublicId(serverId, fightNumber);
+}
+
 export async function notifyFightInvite(params: {
   opponentUserId: string;
   fightId: string;
@@ -35,7 +40,7 @@ export async function notifyFightInvite(params: {
   wagerAmount: number;
 }) {
   const config = await getActiveServerConfig();
-  const label = formatFightDisplayId(params.fightNumber);
+  const label = await fightLabel(params.fightNumber);
   const wager =
     params.wagerAmount > 0
       ? `${formatCurrency(params.wagerAmount, config)} wager`
@@ -57,7 +62,7 @@ export async function notifyFightAccepted(params: {
   accepterName: string;
   isOpenChallenge: boolean;
 }) {
-  const label = formatFightDisplayId(params.fightNumber);
+  const label = await fightLabel(params.fightNumber);
   return createNotification({
     userId: params.creatorUserId,
     type: params.isOpenChallenge
@@ -75,7 +80,7 @@ export async function notifyFightDeclined(params: {
   fightNumber: number;
   declinerName: string;
 }) {
-  const label = formatFightDisplayId(params.fightNumber);
+  const label = await fightLabel(params.fightNumber);
   return createNotification({
     userId: params.creatorUserId,
     type: NotificationType.FIGHT_DECLINED,
@@ -90,7 +95,7 @@ export async function notifyFightDisputed(params: {
   fightId: string;
   fightNumber: number;
 }) {
-  const label = formatFightDisplayId(params.fightNumber);
+  const label = await fightLabel(params.fightNumber);
   await createNotifications(
     params.userIds.map((userId) => ({
       userId,
@@ -108,7 +113,7 @@ export async function notifyEvidenceSubmitted(params: {
   fightNumber: number;
   submitterName: string;
 }) {
-  const label = formatFightDisplayId(params.fightNumber);
+  const label = await fightLabel(params.fightNumber);
   await createNotifications(
     params.notifyUserIds.map((userId) => ({
       userId,
@@ -127,7 +132,7 @@ export async function notifyFightResolved(params: {
   summary: string;
   silent?: boolean;
 }) {
-  const label = formatFightDisplayId(params.fightNumber);
+  const label = await fightLabel(params.fightNumber);
   await createNotifications(
     params.userIds.map((userId) => ({
       userId,
@@ -147,7 +152,7 @@ export async function notifyPayoutCompleted(params: {
   amount: number;
 }) {
   const config = await getActiveServerConfig();
-  const label = formatFightDisplayId(params.fightNumber);
+  const label = await fightLabel(params.fightNumber);
   return createNotification({
     userId: params.winnerUserId,
     type: NotificationType.PAYOUT_COMPLETED,

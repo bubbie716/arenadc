@@ -1,4 +1,5 @@
 import { DepositRequestStatus, EscrowStatus, FightStatus, WithdrawRequestStatus } from "@prisma/client";
+import { formatFightPublicId } from "@/lib/fight-display";
 import { getActiveServerConfig } from "@/lib/server-context";
 import type { AdminActivityItem, AdminOverviewStats } from "@/lib/admin/types";
 import { formatCurrency } from "@/lib/utils";
@@ -150,7 +151,7 @@ export async function getAdminActivityFeed(limit = 20): Promise<AdminActivityIte
   const items: AdminActivityItem[] = [];
 
   for (const f of fights) {
-    const code = `Fight-${String(f.fightNumber).padStart(4, "0")}`;
+    const code = formatFightPublicId(serverId, f.fightNumber);
     const fighters = `${f.playerA?.minecraftUsername ?? "?"} vs ${f.playerB?.minecraftUsername ?? "TBD"}`;
     let kind = "fight.created";
     let message = `${code} created — ${fighters}`;

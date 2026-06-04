@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { SERVER_IDS } from "../src/lib/server-config";
+import { getServerConfig, SERVER_IDS } from "../src/lib/server-config";
 
 const prisma = new PrismaClient();
 
@@ -21,6 +21,15 @@ async function main() {
       });
     }
   }
+
+  await prisma.platformSetting.updateMany({
+    where: {
+      serverId: "sw",
+      key: "deposit_account_name",
+      value: "ArenaSW",
+    },
+    data: { value: getServerConfig("sw").depositAccountName },
+  });
 
   const adminDiscordId = process.env.ADMIN_DISCORD_ID;
   if (adminDiscordId) {

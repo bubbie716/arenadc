@@ -1,6 +1,6 @@
 import { EscrowStatus, FightStatus, WalletTransactionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { formatFightDisplayId } from "@/lib/fight-display";
+import { formatFightPublicId } from "@/lib/fight-display";
 import { getPlatformFeePercent } from "@/server/platform-settings";
 import { TX_WAGER_LOSS } from "@/lib/wallet-tx-types";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
@@ -25,7 +25,7 @@ export async function refundFightEscrow(fightId: string, adminId?: string) {
     throw new Error("FIGHT_ALREADY_SETTLED");
   }
 
-  const fightLabel = formatFightDisplayId(fight.fightNumber);
+  const fightLabel = formatFightPublicId(serverId, fight.fightNumber);
   const escrows = await prisma.escrow.findMany({
     where: { fightId, status: EscrowStatus.LOCKED },
   });
@@ -86,7 +86,7 @@ export async function payoutFightWinner(
       where: { fightId, status: EscrowStatus.LOCKED },
     });
 
-    const fightLabel = formatFightDisplayId(fight.fightNumber);
+    const fightLabel = formatFightPublicId(serverId, fight.fightNumber);
 
     for (const escrow of escrows) {
       await tx.escrow.update({

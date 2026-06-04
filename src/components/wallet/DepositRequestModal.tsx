@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { submitDepositRequest } from "@/actions/wallet";
 import { Button } from "@/components/ui/Button";
+import { ModalSubmittingOverlay } from "@/components/wallet/ModalSubmittingOverlay";
 import { useServerConfig } from "@/components/providers/ServerConfigProvider";
+import { DepositInstructions } from "@/components/wallet/DepositInstructions";
 import { PROOF_UPLOAD_MAX_MB, validateProofImageFile } from "@/lib/wallet/proof-upload";
 
 interface DepositRequestModalProps {
@@ -24,17 +26,32 @@ export function DepositRequestModal({
 }: DepositRequestModalProps) {
   const config = useServerConfig();
   const [pending, startTransition] = useTransition();
+  const [submitPhase, setSubmitPhase] = useState<"uploading" | "submitting" | null>(null);
   const [amount, setAmount] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!previewExpanded) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setPreviewExpanded(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [previewExpanded]);
 
   if (!open) return null;
 
   function reset() {
+    if (preview?.startsWith("blob:")) {
+      URL.revokeObjectURL(preview);
+    }
     setAmount("");
     setPreview(null);
     setFile(null);
+    setPreviewExpanded(false);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -45,8 +62,12 @@ export function DepositRequestModal({
       onError(err);
       return;
     }
+    if (preview?.startsWith("blob:")) {
+      URL.revokeObjectURL(preview);
+    }
     setFile(selected);
     setPreview(URL.createObjectURL(selected));
+    setPreviewExpanded(false);
   }
 
   function handleSubmit() {
@@ -62,6 +83,7 @@ export function DepositRequestModal({
 
     startTransition(async () => {
       try {
+        setSubmitPhase("uploading");
         const formData = new FormData();
         formData.append("file", file);
         const uploadRes = await fetch("/api/wallet/proof", {
@@ -73,26 +95,31 @@ export function DepositRequestModal({
           error?: string;
         };
         if (!uploadRes.ok || !uploadJson.proofImageUrl) {
+          setSubmitPhase(null);
           onError(uploadJson.error ?? "Could not upload proof image.");
           return;
         }
 
+        setSubmitPhase("submitting");
         const res = await submitDepositRequest({
           amount: parsed,
           proofImageUrl: uploadJson.proofImageUrl,
         });
 
         if (!res.ok) {
+          setSubmitPhase(null);
           onError(res.error);
           return;
         }
 
+        setSubmitPhase(null);
         reset();
         onClose();
         onSuccess(
           "Deposit request submitted. Your balance will update after admin approval.",
         );
       } catch {
+        setSubmitPhase(null);
         onError("Could not submit deposit request.");
       }
     });
@@ -105,17 +132,24 @@ export function DepositRequestModal({
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         aria-label="Close"
         onClick={() => {
+          if (pending) return;
           reset();
           onClose();
         }}
       />
       <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface-elevated p-6 shadow-2xl">
+        {submitPhase && (
+          <ModalSubmittingOverlay
+            message={
+              submitPhase === "uploading"
+                ? "Uploading payment proof…"
+                : "Submitting deposit request…"
+            }
+          />
+        )}
         <h2 className="text-xl font-bold">Request deposit</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Send the exact amount of in-game {config.currencyCode} to{" "}
-          <span className="font-semibold text-foreground">{depositAccountName}</span>, then
-          upload a screenshot showing the completed payment. Deposits are reviewed manually
-          and are not credited until approved.
+          <DepositInstructions config={config} depositAccountName={depositAccountName} />
         </p>
 
         <label className="mt-6 block">
@@ -163,9 +197,48 @@ export function DepositRequestModal({
             )}
           </div>
           {preview && (
-            <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-xl border border-border">
-              <Image src={preview} alt="Payment proof preview" fill className="object-contain" unoptimized />
-            </div>
+            <>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setPreviewExpanded(true)}
+                className="group relative mx-auto mt-3 block h-28 w-full max-w-[13rem] cursor-zoom-in overflow-hidden rounded-lg border border-border bg-surface transition-colors hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="View payment proof full screen"
+              >
+                <Image
+                  src={preview}
+                  alt="Payment proof preview"
+                  fill
+                  className="object-contain p-1"
+                  unoptimized
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5 text-[10px] font-medium text-white/90 opacity-0 transition-opacity group-hover:opacity-100">
+                  Click to enlarge
+                </span>
+              </button>
+              {previewExpanded && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                  <button
+                    type="button"
+                    className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+                    aria-label="Close full screen preview"
+                    onClick={() => setPreviewExpanded(false)}
+                  />
+                  <div className="relative z-10 h-[min(85vh,720px)] w-full max-w-4xl">
+                    <Image
+                      src={preview}
+                      alt="Payment proof full screen"
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  <p className="absolute bottom-6 left-0 right-0 z-10 text-center text-xs text-white/70">
+                    Click outside or press Esc to close
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -174,7 +247,7 @@ export function DepositRequestModal({
             Cancel
           </Button>
           <Button disabled={pending} onClick={handleSubmit}>
-            {pending ? "Submitting…" : "Submit request"}
+            Submit request
           </Button>
         </div>
       </div>

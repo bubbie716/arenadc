@@ -156,6 +156,7 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
         <AcceptFightPanel
           fightId={fight.id}
           fightDisplayId={fight.displayId}
+          fightNumber={fight.fightNumber}
           wagerAmount={fight.wagerAmount}
           canAccept={canAccept}
           canDecline={canDecline}

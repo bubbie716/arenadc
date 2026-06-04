@@ -4,6 +4,7 @@ import type {
   NotificationType as DbNotificationType,
 } from "@prisma/client";
 import { buildFightDisplayFields } from "@/lib/fight-display";
+import type { ServerId } from "@/lib/server-config";
 import type {
   AppNotification,
   EvidenceSubmission,
@@ -15,6 +16,7 @@ import type {
 
 type FightWithPlayers = {
   id: string;
+  serverId: string;
   fightNumber: number;
   createdById: string;
   opponentMcName: string | null;
@@ -72,7 +74,10 @@ export function mapFightToUI(fight: FightWithPlayers): Fight {
     else if (fight.playerBId === fight.winnerId) winner = playerBName;
   }
 
-  const { fightNumber, displayId } = buildFightDisplayFields(fight);
+  const { fightNumber, displayId } = buildFightDisplayFields(
+    fight,
+    fight.serverId as ServerId,
+  );
 
   return {
     id: fight.id,

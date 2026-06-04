@@ -33,7 +33,7 @@ export async function getAdminDisputes() {
   });
 
   return fights.map((fight) => {
-    const { displayId } = buildFightDisplayFields(fight);
+    const { displayId } = buildFightDisplayFields(fight, serverId);
     const playerAName =
       fight.playerA?.minecraftUsername ?? fight.createdBy.minecraftUsername ?? "?";
     const playerBName = fight.playerB?.minecraftUsername ?? fight.opponentMcName ?? "TBD";

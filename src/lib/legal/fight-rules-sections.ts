@@ -106,7 +106,7 @@ export const FIGHT_RULES_SECTIONS: LegalSection[] = [
           "Before combat begins, both fighters must type the assigned Fight ID in local in-game chat.",
           "Example:",
         ],
-        codeBlocks: [["Fight ID"], ["RMD-48291"]],
+        codeBlocks: [["Fight ID"], ["ArenaDC-0001"]],
       },
       {
         title: "",

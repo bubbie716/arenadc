@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { formatFightDisplayId } from "@/lib/fight-display";
+import { formatFightPublicId } from "@/lib/fight-display";
 import { getScopedServerId } from "@/server/scope";
 
 /** Assign a fightNumber when missing (legacy rows or stale clients). */
@@ -54,9 +54,10 @@ export async function repairAllFightDisplayNumbers(): Promise<void> {
   }
 }
 
-export async function attachDisplayToFight<T extends { id: string; fightNumber?: number | null }>(
-  fight: T,
-): Promise<T & { fightNumber: number; displayId: string }> {
+export async function attachDisplayToFight<
+  T extends { id: string; fightNumber?: number | null; serverId?: string },
+>(fight: T): Promise<T & { fightNumber: number; displayId: string }> {
+  const serverId = await getScopedServerId();
   let fightNumber = fight.fightNumber;
   if (fightNumber == null || fightNumber < 1) {
     fightNumber = await ensureFightDisplayNumber(fight.id);
@@ -64,6 +65,6 @@ export async function attachDisplayToFight<T extends { id: string; fightNumber?:
   return {
     ...fight,
     fightNumber,
-    displayId: formatFightDisplayId(fightNumber),
+    displayId: formatFightPublicId(serverId, fightNumber),
   };
 }

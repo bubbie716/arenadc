@@ -7,7 +7,8 @@ import {
   isHubHost,
 } from "@/lib/host-mode";
 import {
-  resolveServerIdFromHost,
+  isServerId,
+  resolveServerIdForRequest,
   type ServerId,
 } from "@/lib/server-config";
 import { SERVER_ID_COOKIE, SERVER_ID_HEADER } from "@/lib/server-context";
@@ -59,7 +60,22 @@ export async function middleware(req: NextRequest) {
     return applyHubContext(NextResponse.next());
   }
 
-  const serverId = resolveServerIdFromHost(host);
+  const serverParam = req.nextUrl.searchParams.get("server");
+  if (
+    process.env.NODE_ENV === "development" &&
+    serverParam &&
+    isServerId(serverParam)
+  ) {
+    const url = req.nextUrl.clone();
+    url.searchParams.delete("server");
+    const res = NextResponse.redirect(url);
+    return applyServerContext(res, serverParam);
+  }
+
+  const serverId = resolveServerIdForRequest({
+    host,
+    serverCookie: req.cookies.get(SERVER_ID_COOKIE)?.value,
+  });
 
   if (pathname.startsWith("/api/auth")) {
     return applyServerContext(NextResponse.next(), serverId);

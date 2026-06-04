@@ -5,7 +5,8 @@ import {
   WalletTransactionType,
   WithdrawRequestStatus,
 } from "@prisma/client";
-import { formatFightDisplayId } from "@/lib/fight-display";
+import { formatFightPublicId } from "@/lib/fight-display";
+import { getServerConfig, type ServerId } from "@/lib/server-config";
 import { TX_WAGER_LOSS } from "@/lib/wallet-tx-types";
 import { getWalletBalances } from "@/lib/wallet/ledger";
 import { mapFightStatus } from "@/lib/mappers";
@@ -14,14 +15,15 @@ import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import { getScopedServerId } from "@/server/scope";
 import type { FightStatus as UiFightStatus, Transaction } from "@/lib/types";
 
-async function backfillEscrowLockDescriptions(serverId: string, userId: string) {
+async function backfillEscrowLockDescriptions(serverId: ServerId, userId: string) {
+  const prefix = getServerConfig(serverId).fightIdPrefix;
   const locks = await prisma.walletTransaction.findMany({
     where: {
       serverId,
       userId,
       type: WalletTransactionType.ESCROW_LOCK,
       fightId: { not: null },
-      NOT: { description: { contains: "Fight-" } },
+      NOT: { description: { contains: prefix } },
     },
     include: { fight: { select: { fightNumber: true } } },
   });
@@ -30,7 +32,7 @@ async function backfillEscrowLockDescriptions(serverId: string, userId: string) 
     if (!tx.fight) continue;
     const vsMatch = tx.description.match(/vs (.+)$/i);
     const vsSuffix = vsMatch ? ` vs ${vsMatch[1]}` : "";
-    const fightLabel = formatFightDisplayId(tx.fight.fightNumber);
+    const fightLabel = formatFightPublicId(serverId, tx.fight.fightNumber);
 
     await prisma.walletTransaction.update({
       where: { id: tx.id },
@@ -39,7 +41,7 @@ async function backfillEscrowLockDescriptions(serverId: string, userId: string) 
   }
 }
 
-async function backfillWagerLossTransactions(serverId: string, userId: string) {
+async function backfillWagerLossTransactions(serverId: ServerId, userId: string) {
   const lostEscrows = await prisma.escrow.findMany({
     where: {
       userId,
@@ -74,7 +76,7 @@ async function backfillWagerLossTransactions(serverId: string, userId: string) {
     if (existing) continue;
 
     const fight = escrow.fight;
-    const fightLabel = formatFightDisplayId(fight.fightNumber);
+    const fightLabel = formatFightPublicId(serverId, fight.fightNumber);
     const opponentName =
       userId === fight.playerAId
         ? fight.playerB?.minecraftUsername

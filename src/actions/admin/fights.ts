@@ -35,7 +35,7 @@ export async function adminFightAction(
     });
     if (!fight) return { ok: false, error: "Fight not found." };
 
-    const displayId = formatFightDisplayId(fight.fightNumber);
+    const displayId = formatFightDisplayId(serverId, fight.fightNumber);
     const fighterIds = [fight.playerAId, fight.playerBId].filter(
       (id): id is string => Boolean(id),
     );

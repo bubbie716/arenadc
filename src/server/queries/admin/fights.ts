@@ -55,7 +55,7 @@ export async function getAdminFights(): Promise<AdminFightRow[]> {
     }
     const totalPot = fight.wagerAmount * 2;
     const platformFee = Math.floor(totalPot * (platformFeePercent / 100));
-    const { displayId, fightNumber } = buildFightDisplayFields(fight);
+    const { displayId, fightNumber } = buildFightDisplayFields(fight, serverId);
 
     return {
       id: fight.id,

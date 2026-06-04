@@ -10,6 +10,7 @@ import { useFormatCurrency, useServerConfig } from "@/components/providers/Serve
 interface AcceptFightPanelProps {
   fightId: string;
   fightDisplayId: string;
+  fightNumber: number;
   wagerAmount: number;
   canAccept: boolean;
   canDecline: boolean;
@@ -18,6 +19,7 @@ interface AcceptFightPanelProps {
 export function AcceptFightPanel({
   fightId,
   fightDisplayId,
+  fightNumber,
   wagerAmount,
   canAccept,
   canDecline,
@@ -101,6 +103,7 @@ export function AcceptFightPanel({
         pending={pending}
         context="accept"
         fightDisplayId={fightDisplayId}
+        fightNumber={fightNumber}
         wagerAmount={wagerAmount}
       />
     </section>

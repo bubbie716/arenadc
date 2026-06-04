@@ -126,7 +126,7 @@ export interface Fight {
   id: string;
   /** Sequential display number (database autoincrement). */
   fightNumber: number;
-  /** Formatted label, e.g. Fight-0001 */
+  /** Public fight code, e.g. ArenaSW-0001 */
   displayId: string;
   playerA: string;
   playerB: string;

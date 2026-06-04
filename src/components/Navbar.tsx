@@ -6,6 +6,7 @@ import { signIn, useSession } from "next-auth/react";
 import { ArenaMCLogo } from "@/components/ArenaMCLogo";
 import { AccountMenu } from "@/components/AccountMenu";
 import { NotificationBell } from "@/components/NotificationBell";
+import { saveAdminReturnPath } from "@/lib/admin/return-path";
 import { toAbsoluteCallbackUrl } from "@/lib/auth/callback-url";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,10 @@ const adminLink = { href: "/admin", label: "Admin" };
 export function Navbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+
+  function rememberAppPathBeforeAdmin() {
+    saveAdminReturnPath(pathname);
+  }
 
   const navLinks = session?.user?.isAdmin
     ? [...baseNavLinks, adminLink]
@@ -51,6 +56,7 @@ export function Navbar() {
             <Link
               key={link.href}
               href={link.href}
+              onClick={link.href === "/admin" ? rememberAppPathBeforeAdmin : undefined}
               className={cn(
                 "cursor-pointer rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
                 pathname === link.href
@@ -81,6 +87,7 @@ export function Navbar() {
             <Link
               key={link.href}
               href={link.href}
+              onClick={link.href === "/admin" ? rememberAppPathBeforeAdmin : undefined}
               className={cn(
                 "shrink-0 cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium",
                 pathname === link.href

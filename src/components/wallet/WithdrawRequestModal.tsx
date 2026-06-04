@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import { submitWithdrawalRequest } from "@/actions/wallet";
 import { Button } from "@/components/ui/Button";
+import { ModalSubmittingOverlay } from "@/components/wallet/ModalSubmittingOverlay";
 import {
   useFormatCurrency,
   useServerConfig,
 } from "@/components/providers/ServerConfigProvider";
+import { getWithdrawInstructions } from "@/lib/server-rules/wallet-copy";
 
 interface WithdrawRequestModalProps {
   open: boolean;
@@ -27,6 +29,7 @@ export function WithdrawRequestModal({
 }: WithdrawRequestModalProps) {
   const formatMoney = useFormatCurrency();
   const config = useServerConfig();
+  const withdrawCopy = getWithdrawInstructions(config);
   const [pending, startTransition] = useTransition();
   const [amount, setAmount] = useState("");
   const [minecraftUsername, setMinecraftUsername] = useState(defaultMinecraftUsername);
@@ -67,14 +70,20 @@ export function WithdrawRequestModal({
         type="button"
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         aria-label="Close"
-        onClick={onClose}
+        onClick={() => {
+          if (pending) return;
+          onClose();
+        }}
       />
       <div className="relative z-10 w-full max-w-lg rounded-2xl border border-border bg-surface-elevated p-6 shadow-2xl">
+        {pending && (
+          <ModalSubmittingOverlay message="Submitting withdrawal request…" />
+        )}
         <h2 className="text-xl font-bold">Request withdrawal</h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted">
-          Withdrawals are manually processed in-game. Your requested amount will be locked
-          while the withdrawal is pending.
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-muted">{withdrawCopy.primary}</p>
+        {withdrawCopy.helper ? (
+          <p className="mt-2 text-xs text-muted">{withdrawCopy.helper}</p>
+        ) : null}
         <p className="mt-2 text-sm font-semibold text-foreground">
           Available: {formatMoney(availableBalance)}
         </p>
@@ -111,7 +120,7 @@ export function WithdrawRequestModal({
             Cancel
           </Button>
           <Button disabled={pending} onClick={handleSubmit}>
-            {pending ? "Submitting…" : "Submit request"}
+            Submit request
           </Button>
         </div>
       </div>

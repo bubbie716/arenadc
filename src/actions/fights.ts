@@ -168,7 +168,7 @@ export async function createFight(input: {
       data: {
         fightId: fight.id,
         fightNumber: fight.fightNumber,
-        displayId: formatFightDisplayId(fight.fightNumber),
+        displayId: formatFightDisplayId(serverId, fight.fightNumber),
       },
     };
   } catch (e) {
@@ -247,7 +247,7 @@ export async function acceptFight(fightId: string): Promise<ActionResult> {
 
     await prisma.$transaction(async (tx) => {
       if (hasWager) {
-        const fightLabel = formatFightDisplayId(fight.fightNumber);
+        const fightLabel = formatFightDisplayId(serverId, fight.fightNumber);
 
         for (const [fighter, label] of [
           [creator, fight.createdBy.minecraftUsername],

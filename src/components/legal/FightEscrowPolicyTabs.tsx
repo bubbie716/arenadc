@@ -6,14 +6,14 @@ import { useCallback } from "react";
 import { LegalDocumentBody } from "@/components/legal/LegalDocumentBody";
 import { PageShell } from "@/components/PageShell";
 import {
-  ESCROW_POLICY_TAB,
   FIGHT_ESCROW_EFFECTIVE_DATE,
   FIGHT_ESCROW_LAST_UPDATED,
   FIGHT_ESCROW_TABS,
-  FIGHT_RULES_TAB,
+  getEscrowPolicyTabContent,
+  getFightRulesTabContent,
   parseFightEscrowTab,
   type FightEscrowTab,
-} from "@/lib/legal/fight-escrow-policy";
+} from "@/lib/server-rules/fight-escrow";
 import { applyServerLegalText, localizeLegalSections } from "@/lib/legal/server-text";
 import { useServerConfig } from "@/components/providers/ServerConfigProvider";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,8 @@ export function FightEscrowPolicyTabs({ discordInviteUrl }: { discordInviteUrl: 
     [router],
   );
 
-  const rawTab = activeTab === "escrow" ? ESCROW_POLICY_TAB : FIGHT_RULES_TAB;
+  const rawTab =
+    activeTab === "escrow" ? getEscrowPolicyTabContent(config) : getFightRulesTabContent(config);
   const tabContent = {
     ...rawTab,
     preamble: rawTab.preamble?.map((p) => applyServerLegalText(p, config)),

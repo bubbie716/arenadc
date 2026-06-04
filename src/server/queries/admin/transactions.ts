@@ -1,3 +1,4 @@
+import { formatFightPublicId } from "@/lib/fight-display";
 import { prisma } from "@/lib/prisma";
 import { getScopedServerId } from "@/server/scope";
 
@@ -43,9 +44,7 @@ export async function getAdminTransactions(limit = 300): Promise<AdminTransactio
     type: t.type,
     amount: t.amount,
     fightId: t.fightId,
-    fightLabel: t.fight
-      ? `Fight-${String(t.fight.fightNumber).padStart(4, "0")}`
-      : null,
+    fightLabel: t.fight ? formatFightPublicId(serverId, t.fight.fightNumber) : null,
     createdAt: t.createdAt.toISOString(),
     createdByLabel: t.createdById ? (adminMap.get(t.createdById) ?? "Admin") : null,
     description: t.description,
