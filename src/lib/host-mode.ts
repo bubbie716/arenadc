@@ -62,7 +62,7 @@ export function getHubServerCards(): HubServerCard[] {
     return {
       id,
       name: config.name,
-      arenaLabel: config.depositAccountName,
+      arenaLabel: config.arenaBrandName,
       currencyCode: config.currencyCode,
       href: getArenaOrigin(id),
       features: [

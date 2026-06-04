@@ -11,6 +11,9 @@ export type ServerConfig = {
   currencyName: string;
   currencySymbol: string;
   subdomain: string;
+  /** Hub card / branding (e.g. ArenaSW). */
+  arenaBrandName: string;
+  /** In-game account that receives deposits (may differ from brand on SW). */
   depositAccountName: string;
   legalServerName: string;
   rulesetKind: RulesetKind;
@@ -27,6 +30,7 @@ export const SERVER_CONFIG: Record<ServerId, ServerConfig> = {
     currencyName: "Redmont Dollars",
     currencySymbol: "$",
     subdomain: "dc",
+    arenaBrandName: "ArenaDC",
     depositAccountName: "ArenaDC",
     legalServerName: "DemocracyCraft",
     rulesetKind: "government",
@@ -40,6 +44,7 @@ export const SERVER_CONFIG: Record<ServerId, ServerConfig> = {
     currencyName: "Alexandrian Pounds",
     currencySymbol: "£",
     subdomain: "sc",
+    arenaBrandName: "ArenaSC",
     depositAccountName: "ArenaSC",
     legalServerName: "StateCraft",
     rulesetKind: "government",
@@ -53,6 +58,7 @@ export const SERVER_CONFIG: Record<ServerId, ServerConfig> = {
     currencyName: "Stoneworks Coins",
     currencySymbol: "$",
     subdomain: "sw",
+    arenaBrandName: "ArenaSW",
     depositAccountName: "123lucas11",
     legalServerName: "Stoneworks",
     rulesetKind: "openworld",
