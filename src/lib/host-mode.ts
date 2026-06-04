@@ -7,6 +7,10 @@ const APEX_HOSTS = new Set(["arenamc.xyz", "www.arenamc.xyz"]);
 /** True for apex domain (hub), false for dc/sc/sw arena subdomains. */
 export function isHubHost(host: string): boolean {
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
+  // Dev: localhost = hub; 127.0.0.1 = DC arena (see getArenaOrigin).
+  if (process.env.NODE_ENV === "development" && hostname === "localhost") {
+    return true;
+  }
   return APEX_HOSTS.has(hostname);
 }
 
@@ -47,17 +51,24 @@ export function getArenaOrigin(serverId: ServerId): string {
   return `https://${subdomain}.arenamc.xyz`;
 }
 
+export type HubServerPulse = {
+  signedUpUsers: number;
+  largestPotTodayLabel: string;
+};
+
 export type HubServerCard = {
   id: ServerId;
   name: string;
   arenaLabel: string;
   currencyCode: string;
   href: string;
-  activeUsers: number;
+  pulse: HubServerPulse;
   features: readonly [string, string, string];
 };
 
-export function getHubServerCards(activeUsersByServer: Record<ServerId, number>): HubServerCard[] {
+export function getHubServerCards(
+  pulseByServer: Record<ServerId, HubServerPulse>,
+): HubServerCard[] {
   return SERVER_IDS.map((id) => {
     const config = getServerConfig(id);
     return {
@@ -66,7 +77,7 @@ export function getHubServerCards(activeUsersByServer: Record<ServerId, number>)
       arenaLabel: config.arenaBrandName,
       currencyCode: config.currencyCode,
       href: getArenaOrigin(id),
-      activeUsers: activeUsersByServer[id] ?? 0,
+      pulse: pulseByServer[id],
       features: [
         `${config.currencyCode} Economy`,
         "PvP Challenges",

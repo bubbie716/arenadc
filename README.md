@@ -83,15 +83,14 @@ Protected routes redirect to onboarding when incomplete.
 
 The apex domain shows a premium hub landing page only. Arena routes (`/schedule`, `/wallet`, etc.) redirect to `/` on the hub.
 
-Local dev: `localhost` loads the **dc** arena app by default.
+Local dev:
+- **`http://localhost:3000`** — hub (server selector)
+- **`http://127.0.0.1:3000`** — DC arena app
+- **`http://127.0.0.1:3000/hub`** — hub on any host
 
-**Safari / Stoneworks locally:** Safari often cannot resolve `sw.localhost`. Use either:
-- `http://localhost:3000?server=sw` once (sets a dev cookie; then use plain `localhost:3000` for SW), or
-- Add to `/etc/hosts`: `127.0.0.1 sw.local` and open `http://sw.local:3000` (also add `http://sw.local:3000/api/auth/callback/discord` in Discord).
+Use **`http://`**, not `https://`. Safari may force HTTPS for `arenamc.xyz` (HSTS from production) — use `localhost` instead of `https://arenamc.xyz:3000`.
 
-Same `?server=` works for `sc` (`?server=sc`). To reset to DC, clear the `arenamc-server-id` cookie or visit `?server=dc`.
-
-To preview the hub locally, map `arenamc.xyz` → `127.0.0.1` in `/etc/hosts` and open `http://arenamc.xyz:3000`.
+**Safari / Stoneworks locally:** use `http://127.0.0.1:3000/dev/set-server/sw` or `http://sw.local:3000` (add `127.0.0.1 sw.local` to `/etc/hosts`). Reset to DC: `/dev/set-server/dc`.
 
 **Vercel:** Add wildcard domain `*.arenamc.xyz` (plus apex if needed) on the same project. Subdomain routing is handled in `src/middleware.ts` via `x-arenamc-server-id`.
 

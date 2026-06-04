@@ -1,6 +1,7 @@
 "use client";
 
 import type { HubServerCard as HubServerCardData } from "@/lib/host-mode";
+import { HubPlatformPulse } from "@/components/hub/HubPlatformPulse";
 import { writeLastHubServer } from "@/lib/hub-storage";
 import { cn } from "@/lib/utils";
 
@@ -21,35 +22,31 @@ export function HubServerCard({ server, className }: HubServerCardProps) {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-blue/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <div className="relative flex flex-1 flex-col p-6 sm:p-7">
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
               {server.name}
             </p>
             <h2 className="mt-2 text-2xl font-black tracking-tight">{server.arenaLabel}</h2>
+            <ul className="mt-5 space-y-2.5">
+              {server.features.map((feature) => (
+                <li
+                  key={feature}
+                  className="flex items-center gap-2.5 text-sm text-muted transition-colors group-hover:text-foreground/90"
+                >
+                  <span
+                    className="h-1 w-1 shrink-0 rounded-full bg-accent/80"
+                    aria-hidden
+                  />
+                  {feature}
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="shrink-0 text-right">
-            <p className="text-2xl font-black tabular-nums leading-none text-foreground">
-              {server.activeUsers.toLocaleString()}
-            </p>
-            <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-              Active users
-            </p>
-          </div>
+          <HubPlatformPulse
+            signedUpUsers={server.pulse.signedUpUsers}
+            largestPotLabel={server.pulse.largestPotTodayLabel}
+          />
         </div>
-        <ul className="mt-5 space-y-2.5">
-          {server.features.map((feature) => (
-            <li
-              key={feature}
-              className="flex items-center gap-2.5 text-sm text-muted transition-colors group-hover:text-foreground/90"
-            >
-              <span
-                className="h-1 w-1 shrink-0 rounded-full bg-accent/80"
-                aria-hidden
-              />
-              {feature}
-            </li>
-          ))}
-        </ul>
         <a
           href={server.href}
           onClick={() => writeLastHubServer(server.id)}

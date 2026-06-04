@@ -1,30 +1,50 @@
+import { FightStatus as DbFightStatus } from "@prisma/client";
+import { homepageFightWhere } from "@/lib/fight-statuses";
 import { SERVER_IDS, type ServerId } from "@/lib/server-config";
 import { prisma } from "@/lib/prisma";
 
-const ACTIVE_USER_DAYS = 30;
+export type HubServerPulseStats = {
+  signedUpUsers: number;
+  largestPotToday: number;
+};
 
-function activeUserSince(): Date {
-  return new Date(Date.now() - ACTIVE_USER_DAYS * 24 * 60 * 60 * 1000);
+function startOfToday(): Date {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return start;
 }
 
-export async function countActiveUsersForServer(serverId: ServerId): Promise<number> {
-  const since = activeUserSince();
-  return prisma.user.count({
-    where: {
-      serverId,
-      minecraftUsername: { not: null },
-      OR: [
-        { createdFights: { some: { serverId, createdAt: { gte: since } } } },
-        { fightsAsPlayerA: { some: { serverId, createdAt: { gte: since } } } },
-        { fightsAsPlayerB: { some: { serverId, createdAt: { gte: since } } } },
-      ],
-    },
-  });
+export async function getHubServerPulseStats(
+  serverId: ServerId,
+): Promise<HubServerPulseStats> {
+  const startOfDay = startOfToday();
+
+  const [signedUpUsers, largestPot] = await Promise.all([
+    prisma.user.count({
+      where: { serverId, minecraftUsername: { not: null } },
+    }),
+    prisma.fight.findFirst({
+      where: {
+        serverId,
+        createdAt: { gte: startOfDay },
+        ...homepageFightWhere(),
+      },
+      orderBy: { wagerAmount: "desc" },
+      select: { wagerAmount: true },
+    }),
+  ]);
+
+  return {
+    signedUpUsers,
+    largestPotToday: (largestPot?.wagerAmount ?? 0) * 2,
+  };
 }
 
-export async function getHubActiveUserCounts(): Promise<Record<ServerId, number>> {
+export async function getHubServerPulseStatsAll(): Promise<
+  Record<ServerId, HubServerPulseStats>
+> {
   const entries = await Promise.all(
-    SERVER_IDS.map(async (id) => [id, await countActiveUsersForServer(id)] as const),
+    SERVER_IDS.map(async (id) => [id, await getHubServerPulseStats(id)] as const),
   );
-  return Object.fromEntries(entries) as Record<ServerId, number>;
+  return Object.fromEntries(entries) as Record<ServerId, HubServerPulseStats>;
 }
