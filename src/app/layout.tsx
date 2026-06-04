@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { MaintenanceGuard } from "@/components/MaintenanceGuard";
+import { ServerConfigProvider } from "@/components/providers/ServerConfigProvider";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { getActiveServerConfig } from "@/lib/server-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,29 +16,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "ArenaMC — DemocracyCraft PvP Wagers",
-  description:
-    "Schedule PvP fights, escrow equal wagers in RMD, and build your public fight record on DemocracyCraft.",
-  icons: {
-    icon: [{ url: "/arenamc-icon-128.png", sizes: "128x128", type: "image/png" }],
-    apple: [{ url: "/arenamc-icon-512.png", sizes: "512x512", type: "image/png" }],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getActiveServerConfig();
+  return {
+    title: `ArenaMC — ${config.legalServerName} PvP Wagers`,
+    description: `Schedule PvP fights, escrow equal wagers in ${config.currencyCode}, and build your public fight record on ${config.legalServerName}.`,
+    icons: {
+      icon: [{ url: "/arenamc-icon-128.png", sizes: "128x128", type: "image/png" }],
+      apple: [{ url: "/arenamc-icon-512.png", sizes: "512x512", type: "image/png" }],
+    },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const serverConfig = await getActiveServerConfig();
+
   return (
     <html lang="en" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SessionProvider>
-          <MaintenanceGuard>{children}</MaintenanceGuard>
-        </SessionProvider>
+        <ServerConfigProvider config={serverConfig}>
+          <SessionProvider>
+            <MaintenanceGuard>{children}</MaintenanceGuard>
+          </SessionProvider>
+        </ServerConfigProvider>
       </body>
     </html>
   );

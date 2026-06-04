@@ -11,7 +11,9 @@ import { AdminAuditAction, logAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/auth";
 import { requireAdminNote, optionalAdminNote } from "@/lib/admin/notes";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
+import { getActiveServerConfig } from "@/lib/server-context";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 import {
   notifyDepositApproved,
   notifyDepositRejected,
@@ -26,10 +28,12 @@ export async function adminApproveDeposit(
   try {
     const admin = await requireAdmin();
     const adminNote = optionalAdminNote(note);
+    const serverId = await getScopedServerId();
+    const config = await getActiveServerConfig();
 
     const deposit = await prisma.$transaction(async (tx) => {
-      const req = await tx.depositRequest.findUnique({
-        where: { id: requestId },
+      const req = await tx.depositRequest.findFirst({
+        where: { id: requestId, serverId },
         include: { user: { select: { id: true } } },
       });
       if (!req) throw new Error("Request not found.");
@@ -44,7 +48,7 @@ export async function adminApproveDeposit(
         userId: req.userId,
         type: WalletTransactionType.DEPOSIT,
         amount: req.amount,
-        description: "RMD deposit (admin approved)",
+        description: `${config.currencyCode} deposit (admin approved)`,
         createdById: admin.id,
         depositRequestId: req.id,
       });
@@ -85,9 +89,10 @@ export async function adminRejectDeposit(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
     const deposit = await prisma.depositRequest.updateMany({
-      where: { id: requestId, status: DepositRequestStatus.PENDING },
+      where: { id: requestId, serverId, status: DepositRequestStatus.PENDING },
       data: {
         status: DepositRequestStatus.REJECTED,
         adminNote,
@@ -99,7 +104,9 @@ export async function adminRejectDeposit(
       return { ok: false, error: "Request not found or already processed." };
     }
 
-    const req = await prisma.depositRequest.findUniqueOrThrow({ where: { id: requestId } });
+    const req = await prisma.depositRequest.findFirstOrThrow({
+      where: { id: requestId, serverId },
+    });
 
     await logAdminAction({
       adminId: admin.id,
@@ -126,9 +133,12 @@ export async function adminMarkWithdrawalPaid(
   try {
     const admin = await requireAdmin();
     const adminNote = optionalAdminNote(note);
+    const serverId = await getScopedServerId();
 
     const req = await prisma.$transaction(async (tx) => {
-      const row = await tx.withdrawRequest.findUnique({ where: { id: requestId } });
+      const row = await tx.withdrawRequest.findFirst({
+        where: { id: requestId, serverId },
+      });
       if (!row) throw new Error("Request not found.");
       if (row.status !== WithdrawRequestStatus.PENDING) {
         throw new Error("ALREADY_PROCESSED");
@@ -136,6 +146,7 @@ export async function adminMarkWithdrawalPaid(
 
       const lockTx = await tx.walletTransaction.findFirst({
         where: {
+          serverId,
           withdrawRequestId: requestId,
           type: WalletTransactionType.WITHDRAWAL_LOCK,
         },
@@ -146,6 +157,7 @@ export async function adminMarkWithdrawalPaid(
 
       await tx.walletTransaction.create({
         data: {
+          serverId,
           userId: row.userId,
           type: WalletTransactionType.WITHDRAWAL_PAID,
           amount: 0,
@@ -191,9 +203,12 @@ export async function adminRejectWithdrawal(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
     const req = await prisma.$transaction(async (tx) => {
-      const row = await tx.withdrawRequest.findUnique({ where: { id: requestId } });
+      const row = await tx.withdrawRequest.findFirst({
+        where: { id: requestId, serverId },
+      });
       if (!row) throw new Error("Request not found.");
       if (row.status !== WithdrawRequestStatus.PENDING) {
         throw new Error("ALREADY_PROCESSED");

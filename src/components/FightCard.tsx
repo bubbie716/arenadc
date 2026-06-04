@@ -1,15 +1,17 @@
+"use client";
+
 import type { Fight } from "@/lib/types";
 import { getFightHypeTags } from "@/lib/fight-hype";
 import type { Rivalry } from "@/lib/types";
 import { getFightLocationLabel } from "@/lib/fight-location";
 import {
   calculatePot,
-  formatRmd,
   getFormatLabel,
   getRulesetLabel,
   isHighStakesFight,
 } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
 import { FightCountdown } from "./FightCountdown";
 import { FightHypeBadge } from "./FightHypeBadge";
 import { MinecraftHead } from "./MinecraftHead";
@@ -24,6 +26,7 @@ interface FightCardProps {
 }
 
 export function FightCard({ fight, compact, rankedFighters, rivalries }: FightCardProps) {
+  const formatMoney = useFormatCurrency();
   const { totalPot } = calculatePot(fight.wagerAmount);
   const hypeTags = getFightHypeTags(fight, { rankedFighters, rivalries });
   const highStakes = isHighStakesFight(fight.wagerAmount);
@@ -71,7 +74,7 @@ export function FightCard({ fight, compact, rankedFighters, rivalries }: FightCa
               VS
             </span>
             <span className="text-sm font-bold tabular-nums text-foreground">
-              {formatRmd(fight.wagerAmount, true)}
+              {formatMoney(fight.wagerAmount, { compact: true })}
             </span>
             <span className="text-[10px] leading-none text-muted">each</span>
           </div>
@@ -119,7 +122,7 @@ export function FightCard({ fight, compact, rankedFighters, rivalries }: FightCa
                 highStakes && "text-gradient-accent",
               )}
             >
-              {formatRmd(totalPot)}
+              {formatMoney(totalPot)}
             </p>
           </div>
           <Button href={`/fights/${fight.id}`} size="sm" variant="secondary">

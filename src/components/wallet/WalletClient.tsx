@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
 import type { WalletPageData } from "@/server/queries/wallet";
 import type { Transaction, WalletDepositRequest, WalletWithdrawRequest } from "@/lib/types";
-import { cn, formatDate, formatRmd } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
+import { cn, formatDate } from "@/lib/utils";
 
 const txTypeLabels: Record<string, string> = {
   deposit: "Deposit",
@@ -46,6 +47,7 @@ const txTypeColors: Record<string, string> = {
 };
 
 export function WalletClient(props: WalletPageData) {
+  const formatMoney = useFormatCurrency();
   const {
     balance,
     escrowBalance,
@@ -92,17 +94,17 @@ export function WalletClient(props: WalletPageData) {
         </p>
       )}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Available Balance" value={formatRmd(balance)} highlight />
-        <StatCard label="In Escrow" value={formatRmd(escrowBalance)} subtext="Locked for active fights" />
+        <StatCard label="Available Balance" value={formatMoney(balance)} highlight />
+        <StatCard label="In Escrow" value={formatMoney(escrowBalance)} subtext="Locked for active fights" />
         <StatCard
           label="Pending Withdrawals"
-          value={formatRmd(pendingWithdrawals)}
+          value={formatMoney(pendingWithdrawals)}
           subtext="Locked until processed"
         />
         <div className="relative flex min-h-[6.25rem] flex-col justify-center overflow-hidden rounded-xl border border-success/30 bg-gradient-to-br from-success/15 to-surface-elevated p-5">
           <p className="text-xs font-medium uppercase tracking-wider text-muted">Lifetime Earnings</p>
           <p className="mt-1 text-3xl font-black text-success tabular-nums">
-            {formatRmd(lifetimeEarnings)}
+            {formatMoney(lifetimeEarnings)}
           </p>
         </div>
       </div>
@@ -158,7 +160,7 @@ export function WalletClient(props: WalletPageData) {
                     </p>
                   </div>
                   <p className="mt-2 font-black text-warning tabular-nums">
-                    {formatRmd(escrow.amount)} locked
+                    {formatMoney(escrow.amount)} locked
                   </p>
                   <FightCountdown
                     scheduledAt={escrow.scheduledAt}
@@ -190,7 +192,7 @@ export function WalletClient(props: WalletPageData) {
                     <p className="font-bold">vs {payout.opponent}</p>
                   </div>
                   <p className="mt-2 text-2xl font-black text-success tabular-nums">
-                    +{formatRmd(payout.estimatedAmount)}
+                    +{formatMoney(payout.estimatedAmount)}
                   </p>
                 </div>
               ))
@@ -265,10 +267,11 @@ function RequestSection({
 }
 
 function DepositRequestCard({ request }: { request: WalletDepositRequest }) {
+  const formatMoney = useFormatCurrency();
   return (
     <div className="rounded-xl border border-border bg-surface-elevated p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-lg font-bold tabular-nums">{formatRmd(request.amount)}</p>
+        <p className="text-lg font-bold tabular-nums">{formatMoney(request.amount)}</p>
         <StatusPill status={request.status} />
       </div>
       <p className="mt-1 text-xs text-muted">Submitted {formatDate(request.createdAt)}</p>
@@ -286,10 +289,11 @@ function DepositRequestCard({ request }: { request: WalletDepositRequest }) {
 }
 
 function WithdrawRequestCard({ request }: { request: WalletWithdrawRequest }) {
+  const formatMoney = useFormatCurrency();
   return (
     <div className="rounded-xl border border-border bg-surface-elevated p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-lg font-bold tabular-nums">{formatRmd(request.amount)}</p>
+        <p className="text-lg font-bold tabular-nums">{formatMoney(request.amount)}</p>
         <StatusPill status={request.status} />
       </div>
       <p className="mt-1 text-sm">To {request.minecraftUsername}</p>
@@ -318,6 +322,7 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function TransactionTable({ transactions }: { transactions: Transaction[] }) {
+  const formatMoney = useFormatCurrency();
   return (
     <div className="overflow-x-auto rounded-2xl border border-border">
       <table className="w-full min-w-[600px] text-left text-sm">
@@ -352,7 +357,7 @@ function TransactionTable({ transactions }: { transactions: Transaction[] }) {
                 )}
               >
                 {tx.amount > 0 ? "+" : tx.amount < 0 ? "−" : ""}
-                {formatRmd(Math.abs(tx.amount))}
+                {formatMoney(Math.abs(tx.amount))}
               </td>
             </tr>
           ))}

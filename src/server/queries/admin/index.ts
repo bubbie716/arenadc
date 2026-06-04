@@ -8,8 +8,10 @@ import {
 } from "@/server/queries/admin/wallet-requests";
 import { getAdminTransactions } from "@/server/queries/admin/transactions";
 import { getAdminDisputes } from "@/server/queries/admin/disputes";
+import { getScopedServerId } from "@/server/scope";
 
 export async function getAdminDashboardData() {
+  const serverId = await getScopedServerId();
   const [
     stats,
     activity,
@@ -31,7 +33,7 @@ export async function getAdminDashboardData() {
     getAdminTransactions(),
     getAdminDisputes(),
     getAdminAuditLog(),
-    getPlatformSettings(),
+    getPlatformSettings(serverId),
   ]);
 
   return {

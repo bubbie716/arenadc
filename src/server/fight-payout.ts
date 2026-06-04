@@ -9,10 +9,12 @@ import {
   notifyFightResolved,
   notifyPayoutCompleted,
 } from "@/server/notifications";
+import { getScopedServerId } from "@/server/scope";
 
 export async function refundFightEscrow(fightId: string, adminId?: string) {
-  const fight = await prisma.fight.findUniqueOrThrow({
-    where: { id: fightId },
+  const serverId = await getScopedServerId();
+  const fight = await prisma.fight.findFirstOrThrow({
+    where: { id: fightId, serverId },
     select: { fightNumber: true, status: true },
   });
 
@@ -63,7 +65,8 @@ export async function payoutFightWinner(
   winnerId: string,
   options?: { resolvedSummary?: string; adminId?: string },
 ) {
-  const fight = await prisma.fight.findUniqueOrThrow({ where: { id: fightId } });
+  const serverId = await getScopedServerId();
+  const fight = await prisma.fight.findFirstOrThrow({ where: { id: fightId, serverId } });
 
   if (fight.status === FightStatus.COMPLETED) {
     throw new Error("FIGHT_ALREADY_SETTLED");
@@ -95,8 +98,8 @@ export async function payoutFightWinner(
         const opponent =
           escrow.userId === fight.playerAId ? fight.playerBId : fight.playerAId;
         const opponentUser = opponent
-          ? await tx.user.findUnique({
-              where: { id: opponent },
+          ? await tx.user.findFirst({
+              where: { serverId, id: opponent },
               select: { minecraftUsername: true },
             })
           : null;
@@ -106,6 +109,7 @@ export async function payoutFightWinner(
 
         await tx.walletTransaction.create({
           data: {
+            serverId,
             userId: escrow.userId,
             type: TX_WAGER_LOSS,
             amount: -fight.wagerAmount,

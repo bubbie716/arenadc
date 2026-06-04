@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { WalletTransactionType } from "@prisma/client";
+import { getActiveServerConfig } from "@/lib/server-context";
+import { formatCurrency } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 
 export type LedgerTxClient = Prisma.TransactionClient;
@@ -30,7 +32,12 @@ export async function postLedgerEntry(
 
   const user = await tx.user.findUniqueOrThrow({
     where: { id: params.userId },
-    select: { walletBalance: true, walletFrozen: true, suspendedAt: true },
+    select: {
+      serverId: true,
+      walletBalance: true,
+      walletFrozen: true,
+      suspendedAt: true,
+    },
   });
 
   const nextBalance = user.walletBalance + params.amount;
@@ -45,6 +52,7 @@ export async function postLedgerEntry(
 
   return tx.walletTransaction.create({
     data: {
+      serverId: user.serverId,
       userId: params.userId,
       type: params.type,
       amount: params.amount,
@@ -89,9 +97,10 @@ export async function getWalletBalances(userId: string) {
 export async function assertAvailableForWithdraw(userId: string, amount: number) {
   const { availableBalance, escrowBalance } = await getWalletBalances(userId);
   if (amount > availableBalance) {
+    const config = await getActiveServerConfig();
     return {
       ok: false as const,
-      error: `Insufficient available balance. You have ${availableBalance.toLocaleString()} RMD available (${escrowBalance.toLocaleString()} in fight escrow).`,
+      error: `Insufficient available balance. You have ${formatCurrency(availableBalance, config)} available (${formatCurrency(escrowBalance, config)} in fight escrow).`,
     };
   }
   return { ok: true as const };

@@ -8,6 +8,7 @@ import { AdminAuditAction, logAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/auth";
 import { requireAdminNote } from "@/lib/admin/notes";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export async function adminReviewEvidence(
   submissionId: string,
@@ -17,9 +18,10 @@ export async function adminReviewEvidence(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
-    const submission = await prisma.evidenceSubmission.findUnique({
-      where: { id: submissionId },
+    const submission = await prisma.evidenceSubmission.findFirst({
+      where: { id: submissionId, serverId },
     });
     if (!submission) return { ok: false, error: "Submission not found." };
 

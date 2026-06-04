@@ -1,6 +1,8 @@
+"use client";
+
 import type { FighterStats } from "@/lib/types";
-import { formatRmd } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
 import { MinecraftHead } from "./MinecraftHead";
 import { StreakDisplay } from "./StreakDisplay";
 
@@ -17,6 +19,7 @@ export function FighterCard({
   wagerAmount,
   isWinner,
 }: FighterCardProps) {
+  const formatMoney = useFormatCurrency();
   const isTbd = username === "TBD";
 
   return (
@@ -41,7 +44,7 @@ export function FighterCard({
           )}
           {wagerAmount !== undefined && (
             <p className="mt-2 text-sm text-muted">
-              Wager: <span className="font-bold text-foreground">{formatRmd(wagerAmount)}</span>
+              Wager: <span className="font-bold text-foreground">{formatMoney(wagerAmount)}</span>
             </p>
           )}
           {isTbd ? (
@@ -64,7 +67,7 @@ export function FighterCard({
             { label: "Win Rate", value: `${stats.winRate}%`, accent: true },
             {
               label: "Total Earnings",
-              value: formatRmd(stats.totalEarnings, true),
+              value: formatMoney(stats.totalEarnings, { compact: true }),
               span: true,
             },
           ].map((item) => (

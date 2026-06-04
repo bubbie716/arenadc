@@ -2,10 +2,13 @@ import { FightStatus } from "@prisma/client";
 import { buildFightDisplayFields } from "@/lib/fight-display";
 import { mapFightStatus } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export async function getAdminDisputes() {
+  const serverId = await getScopedServerId();
   const fights = await prisma.fight.findMany({
     where: {
+      serverId,
       status: {
         in: [
           FightStatus.DISPUTED,
@@ -21,6 +24,7 @@ export async function getAdminDisputes() {
       createdBy: { select: { minecraftUsername: true } },
       arena: { select: { name: true } },
       evidenceSubmissions: {
+        where: { serverId },
         include: {
           uploader: { select: { minecraftUsername: true, id: true } },
         },

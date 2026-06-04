@@ -1,5 +1,6 @@
 import { CommunityPickSide, FightStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 import type { CommunityPick } from "@/lib/types";
 
 const CLOSED_STATUSES: FightStatus[] = [
@@ -20,8 +21,9 @@ export async function getCommunityPickForFight(
   fightId: string,
   viewerUserId?: string | null,
 ): Promise<CommunityPickData> {
-  const fight = await prisma.fight.findUnique({
-    where: { id: fightId },
+  const serverId = await getScopedServerId();
+  const fight = await prisma.fight.findFirst({
+    where: { id: fightId, serverId },
     select: { status: true },
   });
 

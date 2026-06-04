@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { requireAdminNote } from "@/lib/admin/notes";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 import {
   notifyAccountSuspended,
   notifyAccountUnsuspended,
@@ -25,11 +26,15 @@ export async function adminSetWalletFrozen(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
-    await prisma.user.update({
-      where: { id: userId },
+    const updated = await prisma.user.updateMany({
+      where: { id: userId, serverId },
       data: { walletFrozen: frozen },
     });
+    if (updated.count === 0) {
+      return { ok: false, error: "User not found." };
+    }
 
     await logAdminAction({
       adminId: admin.id,
@@ -64,15 +69,19 @@ export async function adminSetUserSuspended(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
     if (userId === admin.id && suspended) {
       return { ok: false, error: "You cannot suspend your own account." };
     }
 
-    await prisma.user.update({
-      where: { id: userId },
+    const updated = await prisma.user.updateMany({
+      where: { id: userId, serverId },
       data: { suspendedAt: suspended ? new Date() : null },
     });
+    if (updated.count === 0) {
+      return { ok: false, error: "User not found." };
+    }
 
     await logAdminAction({
       adminId: admin.id,
@@ -106,15 +115,19 @@ export async function adminSetUserAdmin(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
     if (userId === admin.id && !isAdmin) {
       return { ok: false, error: "You cannot remove your own admin role." };
     }
 
-    await prisma.user.update({
-      where: { id: userId },
+    const updated = await prisma.user.updateMany({
+      where: { id: userId, serverId },
       data: { isAdmin },
     });
+    if (updated.count === 0) {
+      return { ok: false, error: "User not found." };
+    }
 
     await logAdminAction({
       adminId: admin.id,
@@ -142,6 +155,15 @@ export async function adminAdjustUserBalance(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
+
+    const target = await prisma.user.findFirst({
+      where: { id: userId, serverId },
+      select: { id: true },
+    });
+    if (!target) {
+      return { ok: false, error: "User not found." };
+    }
 
     if (!Number.isFinite(amount) || amount === 0) {
       return { ok: false, error: "Enter a non-zero adjustment amount." };
@@ -187,11 +209,15 @@ export async function adminSetNotificationsMuted(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
-    await prisma.user.update({
-      where: { id: userId },
+    const updated = await prisma.user.updateMany({
+      where: { id: userId, serverId },
       data: { notificationsMuted: muted },
     });
+    if (updated.count === 0) {
+      return { ok: false, error: "User not found." };
+    }
 
     await logAdminAction({
       adminId: admin.id,

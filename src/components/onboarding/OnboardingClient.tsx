@@ -18,7 +18,8 @@ import {
 import { ArenaMCLogo } from "@/components/ArenaMCLogo";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/Button";
-import { cn, formatRmd } from "@/lib/utils";
+import { useFormatCurrency, useServerConfig } from "@/components/providers/ServerConfigProvider";
+import { cn } from "@/lib/utils";
 import {
   buildOnboardingDiscordCallbackUrl,
   clearStoredOnboardingRef,
@@ -47,6 +48,8 @@ interface OnboardingClientProps {
 }
 
 export function OnboardingClient({ initial }: OnboardingClientProps) {
+  const formatMoney = useFormatCurrency();
+  const { currencyCode, legalServerName } = useServerConfig();
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -201,7 +204,7 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
           <>
             <h2 className="text-2xl font-bold">Link Minecraft Username</h2>
             <p className="mt-3 text-muted">
-              Your in-game name must match DemocracyCraft for verification.
+              Your in-game name must match {legalServerName} for verification.
             </p>
             <input
               value={minecraftName}
@@ -260,8 +263,8 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
             <ArenaMCLogo size="lg" />
             <h2 className="mt-6 text-2xl font-bold">Enter ArenaMC</h2>
             <p className="mt-3 max-w-md text-muted">
-              You are ready to schedule fights. Deposit RMD from your wallet when you are ready to
-              wager.
+              You are ready to schedule fights. Deposit {currencyCode} from your wallet when you are
+              ready to wager.
             </p>
             {initial.referralsEnabled && (
               <div className="mt-6 flex flex-col items-center">
@@ -277,8 +280,8 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
                   className="w-44 rounded-xl border border-border bg-surface-elevated px-3 py-2 text-center font-mono text-sm uppercase tracking-[0.2em] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
                 />
                 <p className="mt-2 max-w-sm text-xs text-muted">
-                  You earn {formatRmd(initial.referralNewUserBonus)} and your referrer earns{" "}
-                  {formatRmd(initial.referralReferrerBonus)} when you finish setup.
+                  You earn {formatMoney(initial.referralNewUserBonus)} and your referrer earns{" "}
+                  {formatMoney(initial.referralReferrerBonus)} when you finish setup.
                 </p>
               </div>
             )}

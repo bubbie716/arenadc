@@ -6,7 +6,7 @@ import { updateReferralCode } from "@/actions/referrals";
 import { displayReferralCode, formatReferralCodeInput } from "@/lib/referral-code";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/Button";
-import { formatRmd } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
 
 interface ReferralCardProps {
   siteOrigin: string;
@@ -40,6 +40,7 @@ export function ReferralCard({
   referralReferrerBonus,
   referralCodeLockedUntil,
 }: ReferralCardProps) {
+  const formatMoney = useFormatCurrency();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
@@ -91,8 +92,8 @@ export function ReferralCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Referrals</CardTitle>
         <p className="text-xs text-muted">
-          Share your code — new users get {formatRmd(referralNewUserBonus)} and you get{" "}
-          {formatRmd(referralReferrerBonus)} when they finish setup.
+          Share your code — new users get {formatMoney(referralNewUserBonus)} and you get{" "}
+          {formatMoney(referralReferrerBonus)} when they finish setup.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -164,7 +165,7 @@ export function ReferralCard({
           <div className="rounded-xl border border-border/60 bg-surface-elevated/50 px-4 py-3">
             <p className="text-xs text-muted">Earned from referrals</p>
             <p className="mt-1 text-2xl font-black tabular-nums text-success">
-              {formatRmd(totalEarned)}
+              {formatMoney(totalEarned)}
             </p>
           </div>
         </div>

@@ -1,6 +1,11 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  resolveServerIdFromHost,
+  type ServerId,
+} from "@/lib/server-config";
+import { SERVER_ID_COOKIE, SERVER_ID_HEADER } from "@/lib/server-context";
 
 const PROTECTED_PREFIXES = ["/schedule", "/wallet", "/referrals", "/profile", "/admin"];
 
@@ -14,18 +19,43 @@ function sessionCookieName() {
     : "authjs.session-token";
 }
 
+function applyServerContext(res: NextResponse, serverId: ServerId) {
+  res.headers.set(SERVER_ID_HEADER, serverId);
+  res.cookies.set(SERVER_ID_COOKIE, serverId, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  return res;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const host = req.headers.get("host") ?? "";
+  const serverId = resolveServerIdFromHost(host);
+
   const token = await getToken({
     req,
     secret: authSecret(),
     cookieName: sessionCookieName(),
   });
 
+  const tokenServerId = token?.serverId as ServerId | undefined;
+  if (
+    token?.dbUserId &&
+    tokenServerId &&
+    tokenServerId !== serverId
+  ) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/api/auth/signout";
+    url.searchParams.set("callbackUrl", "/onboarding");
+    return applyServerContext(NextResponse.redirect(url), serverId);
+  }
+
   const isLoggedIn = Boolean(token?.dbUserId);
 
   if (pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
+    return applyServerContext(NextResponse.next(), serverId);
   }
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
@@ -34,16 +64,16 @@ export async function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = "/onboarding";
     url.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(url);
+    return applyServerContext(NextResponse.redirect(url), serverId);
   }
 
   if (pathname.startsWith("/admin") && isLoggedIn && !token?.isAdmin) {
     const url = req.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    return applyServerContext(NextResponse.redirect(url), serverId);
   }
 
-  return NextResponse.next();
+  return applyServerContext(NextResponse.next(), serverId);
 }
 
 export const config = {

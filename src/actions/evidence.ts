@@ -7,14 +7,20 @@ import { normalizeProofUrl, validateProofUrl } from "@/lib/evidence-proof";
 import { DISPUTE_EVIDENCE_STATUSES } from "@/lib/fight-statuses";
 import { requireSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import type { ServerId } from "@/lib/server-config";
+import { getScopedServerId } from "@/server/scope";
 import {
   notifyEvidenceSubmitted,
   notifyFightResolved,
 } from "@/server/notifications";
 
-async function assertFighterEvidenceSubmit(fightId: string, userId: string) {
-  const fight = await prisma.fight.findUnique({
-    where: { id: fightId },
+async function assertFighterEvidenceSubmit(
+  fightId: string,
+  userId: string,
+  serverId: ServerId,
+) {
+  const fight = await prisma.fight.findFirst({
+    where: { id: fightId, serverId },
     select: {
       playerAId: true,
       playerBId: true,
@@ -43,7 +49,8 @@ export async function submitEvidenceLink(
 ): Promise<ActionResult> {
   try {
     const user = await requireSessionUser();
-    const access = await assertFighterEvidenceSubmit(fightId, user.id);
+    const serverId = await getScopedServerId();
+    const access = await assertFighterEvidenceSubmit(fightId, user.id, serverId);
     if (!access.ok) return access;
 
     const fight = access.fight;
@@ -69,6 +76,7 @@ export async function submitEvidenceLink(
 
     await prisma.evidenceSubmission.create({
       data: {
+        serverId,
         fightId,
         uploaderId: user.id,
         proofUrl: normalizedUrl,
@@ -104,6 +112,13 @@ export async function reviewEvidenceSubmission(
   try {
     const user = await requireSessionUser();
     if (!user.isAdmin) return { ok: false, error: "Admin only." };
+
+    const serverId = await getScopedServerId();
+    const existing = await prisma.evidenceSubmission.findFirst({
+      where: { id: submissionId, serverId },
+      select: { id: true },
+    });
+    if (!existing) return { ok: false, error: "Submission not found." };
 
     const submission = await prisma.evidenceSubmission.update({
       where: { id: submissionId },
@@ -147,13 +162,14 @@ export async function markDisputeUnderReview(fightId: string): Promise<ActionRes
     const user = await requireSessionUser();
     if (!user.isAdmin) return { ok: false, error: "Admin only." };
 
-    await prisma.fight.update({
-      where: { id: fightId },
+    const serverId = await getScopedServerId();
+    await prisma.fight.updateMany({
+      where: { id: fightId, serverId },
       data: { status: FightStatus.DISPUTED },
     });
 
-    const fight = await prisma.fight.findUnique({
-      where: { id: fightId },
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
       select: { fightNumber: true, playerAId: true, playerBId: true },
     });
     if (fight?.playerAId && fight.playerBId) {

@@ -14,6 +14,8 @@ import {
   parseFightEscrowTab,
   type FightEscrowTab,
 } from "@/lib/legal/fight-escrow-policy";
+import { applyServerLegalText, localizeLegalSections } from "@/lib/legal/server-text";
+import { useServerConfig } from "@/components/providers/ServerConfigProvider";
 import { cn } from "@/lib/utils";
 
 function tabHref(tab: FightEscrowTab) {
@@ -21,6 +23,7 @@ function tabHref(tab: FightEscrowTab) {
 }
 
 export function FightEscrowPolicyTabs({ discordInviteUrl }: { discordInviteUrl: string }) {
+  const config = useServerConfig();
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parseFightEscrowTab(searchParams.get("tab"));
@@ -32,7 +35,12 @@ export function FightEscrowPolicyTabs({ discordInviteUrl }: { discordInviteUrl: 
     [router],
   );
 
-  const tabContent = activeTab === "escrow" ? ESCROW_POLICY_TAB : FIGHT_RULES_TAB;
+  const rawTab = activeTab === "escrow" ? ESCROW_POLICY_TAB : FIGHT_RULES_TAB;
+  const tabContent = {
+    ...rawTab,
+    preamble: rawTab.preamble?.map((p) => applyServerLegalText(p, config)),
+    sections: localizeLegalSections(rawTab.sections, config),
+  };
 
   return (
     <PageShell

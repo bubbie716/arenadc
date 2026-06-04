@@ -15,9 +15,11 @@ import {
 import { getHomePageData } from "@/server/queries/home";
 import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import { getSessionUser } from "@/lib/auth/session";
-import { formatRmd } from "@/lib/utils";
+import { getActiveServerConfig } from "@/lib/server-context";
+import { formatCurrency } from "@/lib/utils";
 
 export default async function HomePage() {
+  const config = await getActiveServerConfig();
   const [startingSoon, biggestPots, recentResults, homeData, fightCount, user, platformSettings] =
     await Promise.all([
     getFightsStartingSoon(),
@@ -47,19 +49,22 @@ export default async function HomePage() {
             <div className="mb-3 flex flex-wrap items-center gap-3">
               <Badge variant="success" className="animate-pulse-soft">
                 <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-success" />
-                Live on DemocracyCraft
+                Live on {config.legalServerName}
               </Badge>
               <span className="text-xs text-muted">
                 {platformStats.fightsThisWeek} fights this week ·{" "}
-                {formatRmd(platformStats.rmdWageredToday, true)} wagered today
+                {formatCurrency(platformStats.rmdWageredToday, config, { compact: true })} wagered
+                today
               </span>
             </div>
             <h1 className="max-w-2xl text-4xl font-black tracking-tight sm:text-5xl">
               Challenge rivals.{" "}
-              <span className="text-gradient-accent">Escrow RMD. Prove it.</span>
+              <span className="text-gradient-accent">
+                Escrow {config.currencyCode}. Prove it.
+              </span>
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-              ArenaMC is the PvP challenge platform for DemocracyCraft. Schedule fights,
+              ArenaMC is the PvP challenge platform for {config.legalServerName}. Schedule fights,
               lock equal wagers in escrow, and build your public fight record.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -85,7 +90,7 @@ export default async function HomePage() {
             </p>
             <p className="text-xs text-muted">active fighters</p>
             <p className="mt-4 text-sm font-bold text-foreground">
-              {formatRmd(platformStats.largestPotToday, true)}
+              {formatCurrency(platformStats.largestPotToday, config, { compact: true })}
             </p>
             <p className="text-[10px] text-muted">largest pot today</p>
           </div>

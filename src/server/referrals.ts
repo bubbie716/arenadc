@@ -7,10 +7,12 @@ import {
   referralCodeStorageVariants,
   validateCustomReferralCode,
 } from "@/lib/referral-code";
+import type { ServerId } from "@/lib/server-config";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { prisma } from "@/lib/prisma";
 import { notifyReferralRedemption } from "@/server/notifications/referrals";
 import { getResolvedPlatformSettings } from "@/server/platform-settings";
+import { getScopedServerId } from "@/server/scope";
 
 const MAX_CODE_ATTEMPTS = 10;
 export const REFERRAL_CODE_LOCK_DAYS = 14;
@@ -35,6 +37,7 @@ export class ReferralError extends Error {
 export { displayReferralCode };
 
 export async function setUserReferralCode(userId: string, rawCode: string): Promise<string> {
+  const serverId = await getScopedServerId();
   const settings = await getResolvedPlatformSettings();
   if (!settings.referralsEnabled) {
     throw new ReferralError("Referrals are currently disabled.");
@@ -50,6 +53,7 @@ export async function setUserReferralCode(userId: string, rawCode: string): Prom
 
   const taken = await prisma.user.findFirst({
     where: {
+      serverId,
       referralCode: { in: variants },
       NOT: { id: userId },
     },
@@ -129,6 +133,7 @@ export async function ensureUserReferralCode(userId: string): Promise<string> {
 }
 
 export async function getReferralStatsForUser(userId: string) {
+  const serverId = await getScopedServerId();
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     select: { referralCode: true, referralCodeLockedUntil: true },
@@ -136,7 +141,7 @@ export async function getReferralStatsForUser(userId: string) {
 
   const [redemptions, code] = await Promise.all([
     prisma.referralRedemption.findMany({
-      where: { referrerId: userId },
+      where: { referrerId: userId, serverId },
       select: { referrerBonus: true },
     }),
     user.referralCode
@@ -155,6 +160,7 @@ export async function getReferralStatsForUser(userId: string) {
 type RedeemReferralParams = {
   referredUserId: string;
   code: string;
+  serverId: ServerId;
   tx: Prisma.TransactionClient;
 };
 
@@ -171,6 +177,7 @@ export type ReferralRedemptionResult = {
 export async function redeemReferralInTransaction({
   referredUserId,
   code,
+  serverId,
   tx,
 }: RedeemReferralParams): Promise<ReferralRedemptionResult | undefined> {
   if (!code.trim()) {
@@ -205,7 +212,7 @@ export async function redeemReferralInTransaction({
   }
 
   const referrer = await tx.user.findFirst({
-    where: { referralCode: { in: lookupValues } },
+    where: { serverId, referralCode: { in: lookupValues } },
     select: {
       id: true,
       onboardingComplete: true,
@@ -233,6 +240,7 @@ export async function redeemReferralInTransaction({
 
   await tx.referralRedemption.create({
     data: {
+      serverId,
       referrerId: referrer.id,
       referredUserId,
       newUserBonus,
@@ -275,6 +283,7 @@ export async function completeOnboardingWithReferral(
   userId: string,
   referralCode?: string,
 ) {
+  const serverId = await getScopedServerId();
   let redemption: ReferralRedemptionResult | undefined;
 
   await prisma.$transaction(async (tx) => {
@@ -301,6 +310,7 @@ export async function completeOnboardingWithReferral(
       redemption = await redeemReferralInTransaction({
         referredUserId: userId,
         code: referralCode,
+        serverId,
         tx,
       });
     }

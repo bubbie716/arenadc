@@ -6,6 +6,8 @@ import {
   WalletTransactionType,
   WithdrawRequestStatus,
 } from "@prisma/client";
+import { getActiveServerConfig } from "@/lib/server-context";
+import { formatCurrency } from "@/lib/utils";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { assertWalletTransactionsAllowed } from "@/lib/account-restrictions";
 import { getResolvedPlatformSettings } from "@/server/platform-settings";
@@ -19,6 +21,7 @@ import {
   notifyWithdrawalSubmitted,
 } from "@/server/notifications/wallet";
 import { isValidProofImageUrl } from "@/lib/wallet/proof-storage";
+import { getScopedServerId } from "@/server/scope";
 
 const MIN_AMOUNT = 100;
 const MAX_DEPOSIT = 1_000_000;
@@ -31,6 +34,8 @@ export async function submitDepositRequest(input: {
 }): Promise<ActionResult<{ requestId: string }>> {
   try {
     const user = await requireOnboardedUser();
+    const serverId = await getScopedServerId();
+    const config = await getActiveServerConfig();
     const walletCheck = assertWalletTransactionsAllowed(user);
     if (!walletCheck.ok) {
       return { ok: false, error: walletCheck.error };
@@ -38,7 +43,10 @@ export async function submitDepositRequest(input: {
 
     const amount = Math.floor(input.amount);
     if (amount < MIN_AMOUNT || amount > MAX_DEPOSIT) {
-      return { ok: false, error: `Enter an amount between ${MIN_AMOUNT} and ${MAX_DEPOSIT.toLocaleString()} RMD.` };
+      return {
+        ok: false,
+        error: `Enter an amount between ${formatCurrency(MIN_AMOUNT, config)} and ${formatCurrency(MAX_DEPOSIT, config)}.`,
+      };
     }
 
     const proofImageUrl = input.proofImageUrl?.trim();
@@ -47,7 +55,7 @@ export async function submitDepositRequest(input: {
     }
 
     const pending = await prisma.depositRequest.count({
-      where: { userId: user.id, status: DepositRequestStatus.PENDING },
+      where: { serverId, userId: user.id, status: DepositRequestStatus.PENDING },
     });
     if (pending >= MAX_PENDING_DEPOSITS) {
       return { ok: false, error: "You have too many pending deposit requests." };
@@ -55,6 +63,7 @@ export async function submitDepositRequest(input: {
 
     const request = await prisma.depositRequest.create({
       data: {
+        serverId,
         userId: user.id,
         amount,
         proofImageUrl,
@@ -83,6 +92,8 @@ export async function submitWithdrawalRequest(input: {
 }): Promise<ActionResult<{ requestId: string }>> {
   try {
     const user = await requireOnboardedUser();
+    const serverId = await getScopedServerId();
+    const config = await getActiveServerConfig();
     const walletCheck = assertWalletTransactionsAllowed(user);
     if (!walletCheck.ok) {
       return { ok: false, error: walletCheck.error };
@@ -95,7 +106,10 @@ export async function submitWithdrawalRequest(input: {
 
     const amount = Math.floor(input.amount);
     if (amount < MIN_AMOUNT) {
-      return { ok: false, error: `Minimum withdrawal is ${MIN_AMOUNT} RMD.` };
+      return {
+        ok: false,
+        error: `Minimum withdrawal is ${formatCurrency(MIN_AMOUNT, config)}.`,
+      };
     }
 
     const minecraftUsername = input.minecraftUsername.trim();
@@ -109,7 +123,7 @@ export async function submitWithdrawalRequest(input: {
     }
 
     const pending = await prisma.withdrawRequest.count({
-      where: { userId: user.id, status: WithdrawRequestStatus.PENDING },
+      where: { serverId, userId: user.id, status: WithdrawRequestStatus.PENDING },
     });
     if (pending >= MAX_PENDING_WITHDRAWS) {
       return { ok: false, error: "You already have pending withdrawal requests." };
@@ -123,6 +137,7 @@ export async function submitWithdrawalRequest(input: {
 
       const created = await tx.withdrawRequest.create({
         data: {
+          serverId,
           userId: user.id,
           amount,
           minecraftUsername,

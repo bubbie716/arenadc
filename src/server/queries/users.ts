@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { getFighterStatsByUsername } from "@/server/queries/fighter-stats";
+import { getScopedServerId } from "@/server/scope";
 
 export async function getTopFighter() {
+  const serverId = await getScopedServerId();
   const users = await prisma.user.findMany({
-    where: { minecraftUsername: { not: null }, onboardingComplete: true },
+    where: { serverId, minecraftUsername: { not: null }, onboardingComplete: true },
     take: 20,
   });
 
@@ -38,8 +40,9 @@ export async function getTopFighter() {
 }
 
 export async function getRankedFighterNames(): Promise<string[]> {
+  const serverId = await getScopedServerId();
   const users = await prisma.user.findMany({
-    where: { minecraftUsername: { not: null } },
+    where: { serverId, minecraftUsername: { not: null } },
     orderBy: { walletBalance: "desc" },
     take: 5,
     select: { minecraftUsername: true },

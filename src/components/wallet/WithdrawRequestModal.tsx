@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 import { submitWithdrawalRequest } from "@/actions/wallet";
 import { Button } from "@/components/ui/Button";
-import { formatRmd } from "@/lib/utils";
+import {
+  useFormatCurrency,
+  useServerConfig,
+} from "@/components/providers/ServerConfigProvider";
 
 interface WithdrawRequestModalProps {
   open: boolean;
@@ -22,6 +25,8 @@ export function WithdrawRequestModal({
   onSuccess,
   onError,
 }: WithdrawRequestModalProps) {
+  const formatMoney = useFormatCurrency();
+  const config = useServerConfig();
   const [pending, startTransition] = useTransition();
   const [amount, setAmount] = useState("");
   const [minecraftUsername, setMinecraftUsername] = useState(defaultMinecraftUsername);
@@ -31,11 +36,11 @@ export function WithdrawRequestModal({
   function handleSubmit() {
     const parsed = Math.floor(Number(amount));
     if (!Number.isFinite(parsed) || parsed < 100) {
-      onError("Enter a valid amount (minimum 100 RMD).");
+      onError(`Enter a valid amount (minimum 100 ${config.currencyCode}).`);
       return;
     }
     if (parsed > availableBalance) {
-      onError(`Insufficient available balance (${formatRmd(availableBalance)}).`);
+      onError(`Insufficient available balance (${formatMoney(availableBalance)}).`);
       return;
     }
 
@@ -71,11 +76,13 @@ export function WithdrawRequestModal({
           while the withdrawal is pending.
         </p>
         <p className="mt-2 text-sm font-semibold text-foreground">
-          Available: {formatRmd(availableBalance)}
+          Available: {formatMoney(availableBalance)}
         </p>
 
         <label className="mt-6 block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Amount (RMD)</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Amount ({config.currencyCode})
+          </span>
           <input
             type="number"
             min={100}

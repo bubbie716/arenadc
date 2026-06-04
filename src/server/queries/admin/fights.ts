@@ -3,6 +3,7 @@ import { getPlatformFeePercent } from "@/server/platform-settings";
 import { mapFightStatus } from "@/lib/mappers";
 import type { FightStatus } from "@/lib/types";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export type AdminFightRow = {
   id: string;
@@ -27,8 +28,10 @@ export type AdminFightRow = {
 };
 
 export async function getAdminFights(): Promise<AdminFightRow[]> {
+  const serverId = await getScopedServerId();
   const [fights, platformFeePercent] = await Promise.all([
     prisma.fight.findMany({
+      where: { serverId },
       orderBy: { createdAt: "desc" },
       include: {
         playerA: { select: { minecraftUsername: true } },

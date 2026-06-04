@@ -1,13 +1,16 @@
 import { NotificationType } from "@prisma/client";
 import { formatFightDisplayId } from "@/lib/fight-display";
+import { getActiveServerConfig } from "@/lib/server-context";
 import { mapNotification } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
 import type { AppNotification } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils";
 import {
   sendNotification,
   sendNotifications,
   type NotificationInput,
 } from "@/server/notifications/dispatch";
+import { getScopedServerId } from "@/server/scope";
 
 export type CreateNotificationInput = NotificationInput;
 
@@ -31,10 +34,11 @@ export async function notifyFightInvite(params: {
   creatorName: string;
   wagerAmount: number;
 }) {
+  const config = await getActiveServerConfig();
   const label = formatFightDisplayId(params.fightNumber);
   const wager =
     params.wagerAmount > 0
-      ? `${params.wagerAmount.toLocaleString()} RMD wager`
+      ? `${formatCurrency(params.wagerAmount, config)} wager`
       : "Free fight";
 
   return createNotification({
@@ -142,12 +146,13 @@ export async function notifyPayoutCompleted(params: {
   fightNumber: number;
   amount: number;
 }) {
+  const config = await getActiveServerConfig();
   const label = formatFightDisplayId(params.fightNumber);
   return createNotification({
     userId: params.winnerUserId,
     type: NotificationType.PAYOUT_COMPLETED,
     title: "Payout completed",
-    message: `You received ${params.amount.toLocaleString()} RMD from ${label}.`,
+    message: `You received ${formatCurrency(params.amount, config)} from ${label}.`,
     relatedFightId: params.fightId,
   });
 }
@@ -156,8 +161,9 @@ export async function getNotificationsForUser(
   userId: string,
   limit = 20,
 ): Promise<AppNotification[]> {
+  const serverId = await getScopedServerId();
   const rows = await prisma.notification.findMany({
-    where: { userId },
+    where: { serverId, userId },
     orderBy: { createdAt: "desc" },
     take: limit,
   });
@@ -166,21 +172,24 @@ export async function getNotificationsForUser(
 }
 
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  const serverId = await getScopedServerId();
   return prisma.notification.count({
-    where: { userId, readAt: null },
+    where: { serverId, userId, readAt: null },
   });
 }
 
 export async function markNotificationRead(userId: string, notificationId: string) {
+  const serverId = await getScopedServerId();
   await prisma.notification.updateMany({
-    where: { id: notificationId, userId },
+    where: { serverId, id: notificationId, userId },
     data: { readAt: new Date() },
   });
 }
 
 export async function markAllNotificationsRead(userId: string) {
+  const serverId = await getScopedServerId();
   await prisma.notification.updateMany({
-    where: { userId, readAt: null },
+    where: { serverId, userId, readAt: null },
     data: { readAt: new Date() },
   });
 }

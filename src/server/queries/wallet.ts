@@ -11,11 +11,13 @@ import { getWalletBalances } from "@/lib/wallet/ledger";
 import { mapFightStatus } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
 import { getResolvedPlatformSettings } from "@/server/platform-settings";
+import { getScopedServerId } from "@/server/scope";
 import type { FightStatus as UiFightStatus, Transaction } from "@/lib/types";
 
-async function backfillEscrowLockDescriptions(userId: string) {
+async function backfillEscrowLockDescriptions(serverId: string, userId: string) {
   const locks = await prisma.walletTransaction.findMany({
     where: {
+      serverId,
       userId,
       type: WalletTransactionType.ESCROW_LOCK,
       fightId: { not: null },
@@ -37,12 +39,13 @@ async function backfillEscrowLockDescriptions(userId: string) {
   }
 }
 
-async function backfillWagerLossTransactions(userId: string) {
+async function backfillWagerLossTransactions(serverId: string, userId: string) {
   const lostEscrows = await prisma.escrow.findMany({
     where: {
       userId,
       status: EscrowStatus.RELEASED,
       fight: {
+        serverId,
         status: FightStatus.COMPLETED,
         wagerAmount: { gt: 0 },
         winnerId: { not: userId },
@@ -66,7 +69,7 @@ async function backfillWagerLossTransactions(userId: string) {
 
   for (const escrow of lostEscrows) {
     const existing = await prisma.walletTransaction.findFirst({
-      where: { userId, fightId: escrow.fightId, type: TX_WAGER_LOSS },
+      where: { serverId, userId, fightId: escrow.fightId, type: TX_WAGER_LOSS },
     });
     if (existing) continue;
 
@@ -80,6 +83,7 @@ async function backfillWagerLossTransactions(userId: string) {
 
     await prisma.walletTransaction.create({
       data: {
+        serverId,
         userId,
         type: TX_WAGER_LOSS,
         amount: -fight.wagerAmount,
@@ -152,19 +156,20 @@ function mapWithdrawRequest(w: {
 }
 
 export async function getWalletData(userId: string) {
-  await backfillEscrowLockDescriptions(userId);
-  await backfillWagerLossTransactions(userId);
+  const serverId = await getScopedServerId();
+  await backfillEscrowLockDescriptions(serverId, userId);
+  await backfillWagerLossTransactions(serverId, userId);
 
   const balances = await getWalletBalances(userId);
 
   const [transactions, escrows, depositRequests, withdrawRequests] = await Promise.all([
     prisma.walletTransaction.findMany({
-      where: { userId },
+      where: { serverId, userId },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
     prisma.escrow.findMany({
-      where: { userId, status: EscrowStatus.LOCKED },
+      where: { userId, status: EscrowStatus.LOCKED, fight: { serverId } },
       include: {
         fight: {
           include: {
@@ -176,19 +181,19 @@ export async function getWalletData(userId: string) {
       },
     }),
     prisma.depositRequest.findMany({
-      where: { userId },
+      where: { serverId, userId },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
     prisma.withdrawRequest.findMany({
-      where: { userId },
+      where: { serverId, userId },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
   ]);
 
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: userId },
+  const user = await prisma.user.findFirstOrThrow({
+    where: { serverId, id: userId },
     select: { minecraftUsername: true, suspendedAt: true, walletFrozen: true },
   });
 

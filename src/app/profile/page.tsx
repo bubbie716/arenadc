@@ -12,7 +12,8 @@ import { FightStatus } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
 import { resolveDiscordInviteUrl } from "@/components/MaintenanceGuard";
 import { prisma } from "@/lib/prisma";
-import { formatRmd } from "@/lib/utils";
+import { getActiveServerConfig } from "@/lib/server-context";
+import { formatCurrency } from "@/lib/utils";
 import { getFighterStatsByUsername } from "@/server/queries/fighter-stats";
 import { getUserRecentFights } from "@/server/queries/fights";
 import { getRankedFighterNames } from "@/server/queries/users";
@@ -20,6 +21,7 @@ import { getWalletData } from "@/server/queries/wallet";
 import type { FighterBadgeId } from "@/lib/types";
 
 export default async function ProfilePage() {
+  const config = await getActiveServerConfig();
   const user = await getSessionUser();
   if (!user) redirect("/onboarding");
   if (!user.onboardingComplete || !user.minecraftUsername) redirect("/onboarding");
@@ -109,8 +111,11 @@ export default async function ProfilePage() {
           value={`${fighterStats.record.wins}W – ${fighterStats.record.losses}L`}
         />
         <StatCard label="Win Rate" value={`${fighterStats.winRate}%`} highlight />
-        <StatCard label="Total Wagered" value={formatRmd(fighterStats.totalWagered)} />
-        <StatCard label="Lifetime Earnings" value={formatRmd(wallet.lifetimeEarnings)} />
+        <StatCard label="Total Wagered" value={formatCurrency(fighterStats.totalWagered, config)} />
+        <StatCard
+          label="Lifetime Earnings"
+          value={formatCurrency(wallet.lifetimeEarnings, config)}
+        />
         <Card className="flex min-h-[6.25rem]">
           <CardContent className="flex w-full flex-col justify-center p-5">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Streak</p>

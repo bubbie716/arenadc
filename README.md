@@ -63,6 +63,24 @@ Protected routes redirect to onboarding when incomplete.
 | `npm run db:seed` | Seed approved arenas |
 | `npm run build` | Production build |
 
+## Multi-server (one deployment)
+
+ArenaMC runs as a single app on three subdomains:
+
+| Server | URL | Currency |
+|--------|-----|----------|
+| DemocracyCraft | `dc.arenamc.xyz` | RMD ($) |
+| StateCraft | `sc.arenamc.xyz` | ALP (£) |
+| Stoneworks | `sw.arenamc.xyz` | SWC ($) |
+
+Local dev defaults to **dc** (`localhost`).
+
+**Vercel:** Add wildcard domain `*.arenamc.xyz` (plus apex if needed) on the same project. Subdomain routing is handled in `src/middleware.ts` via `x-arenamc-server-id`.
+
+Users are isolated per server (`discordId` + `serverId`). The same Discord account can have separate DC, SC, and SW profiles.
+
+After deploy, run `npm run db:seed` to create arenas for all three servers.
+
 ## Admin
 
-Set `ADMIN_DISCORD_ID` in `.env`, sign in, then visit `/admin` after your user exists in the database.
+Set `ADMIN_DISCORD_ID` in `.env`, sign in on each subdomain, then visit `/admin` after your user exists in the database for that server.

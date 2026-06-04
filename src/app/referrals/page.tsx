@@ -7,9 +7,11 @@ import { PageShell } from "@/components/PageShell";
 import { getSessionUser } from "@/lib/auth/session";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { resolveDiscordInviteUrl } from "@/components/MaintenanceGuard";
+import { getActiveServerConfig } from "@/lib/server-context";
 import { getReferralsPageData } from "@/server/queries/referrals";
 
 export default async function ReferralsPage() {
+  const config = await getActiveServerConfig();
   const user = await getSessionUser();
   if (!user) redirect("/onboarding");
   if (!user.onboardingComplete) redirect("/onboarding");
@@ -23,7 +25,7 @@ export default async function ReferralsPage() {
   return (
     <PageShell
       title="Referrals"
-      description="Share your code and earn RMD when friends join ArenaMC."
+      description={`Share your code and earn ${config.currencyCode} when friends join ArenaMC.`}
       maxWidth="lg"
       discordInviteUrl={discordInviteUrl}
     >

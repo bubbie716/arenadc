@@ -2,6 +2,8 @@ import NextAuth, { type Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { DiscordProfile } from "next-auth/providers/discord";
 import { authConfig } from "@/auth.config";
+import { getAuthServerId } from "@/lib/auth/server-id";
+import type { ServerId } from "@/lib/server-config";
 import { prisma } from "@/lib/prisma";
 
 function shouldGrantAdmin(discordId: string) {
@@ -9,7 +11,7 @@ function shouldGrantAdmin(discordId: string) {
   return Boolean(adminDiscordId && adminDiscordId === discordId);
 }
 
-async function upsertDiscordUser(profile: DiscordProfile) {
+async function upsertDiscordUser(profile: DiscordProfile, serverId: ServerId) {
   const discordUsername = profile.global_name ?? profile.username;
   const avatarUrl = profile.avatar
     ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
@@ -17,8 +19,14 @@ async function upsertDiscordUser(profile: DiscordProfile) {
   const isAdmin = shouldGrantAdmin(profile.id);
 
   return prisma.user.upsert({
-    where: { discordId: profile.id },
+    where: {
+      serverId_discordId: {
+        serverId,
+        discordId: profile.id,
+      },
+    },
     create: {
+      serverId,
       discordId: profile.id,
       discordUsername,
       avatarUrl,
@@ -44,12 +52,14 @@ function clearedAuthToken(token: JWT): JWT {
 
 async function syncTokenFromDbUserId(token: JWT): Promise<JWT> {
   const dbUserId = token.dbUserId;
-  if (!dbUserId) return token;
+  const serverId = token.serverId as ServerId | undefined;
+  if (!dbUserId || !serverId) return token;
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: dbUserId },
+  const dbUser = await prisma.user.findFirst({
+    where: { id: dbUserId, serverId },
     select: {
       id: true,
+      serverId: true,
       onboardingComplete: true,
       minecraftUsername: true,
       isAdmin: true,
@@ -67,6 +77,7 @@ async function syncTokenFromDbUserId(token: JWT): Promise<JWT> {
   token.isAdmin = dbUser.isAdmin;
   token.discordUsername = dbUser.discordUsername;
   token.picture = dbUser.avatarUrl ?? undefined;
+  token.serverId = dbUser.serverId as ServerId;
   return token;
 }
 
@@ -75,16 +86,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ profile }) {
       if (!profile) return false;
-      await upsertDiscordUser(profile as DiscordProfile);
+      const serverId = await getAuthServerId();
+      await upsertDiscordUser(profile as DiscordProfile, serverId);
       return true;
     },
     async jwt({ token, account, profile }) {
       if (account?.provider === "discord" && profile) {
         const discord = profile as DiscordProfile;
-        const dbUser = await upsertDiscordUser(discord);
+        const serverId = await getAuthServerId();
+        const dbUser = await upsertDiscordUser(discord, serverId);
         token.discordId = discord.id;
         token.discordUsername = discord.global_name ?? discord.username;
         token.dbUserId = dbUser.id;
+        token.serverId = serverId;
         token.onboardingComplete = dbUser.onboardingComplete;
         token.minecraftUsername = dbUser.minecraftUsername;
         token.isAdmin = dbUser.isAdmin;
@@ -97,8 +111,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }): Promise<Session> {
       const dbUserId = token.dbUserId as string | undefined;
+      const serverId = token.serverId as ServerId | undefined;
 
-      if (!dbUserId) {
+      if (!dbUserId || !serverId) {
         return {
           expires: session.expires,
           user: {
@@ -107,6 +122,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: null,
             image: null,
             dbUserId: "",
+            serverId: serverId ?? "dc",
             onboardingComplete: false,
             minecraftUsername: null,
             isAdmin: false,
@@ -122,6 +138,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: token.name ?? null,
           image: (token.picture as string) ?? null,
           dbUserId,
+          serverId,
           onboardingComplete: Boolean(token.onboardingComplete),
           minecraftUsername: (token.minecraftUsername as string | null) ?? null,
           isAdmin: Boolean(token.isAdmin),
@@ -132,7 +149,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   events: {
     async signIn({ profile }) {
       if (profile) {
-        await upsertDiscordUser(profile as DiscordProfile);
+        const serverId = await getAuthServerId();
+        await upsertDiscordUser(profile as DiscordProfile, serverId);
       }
     },
   },

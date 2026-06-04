@@ -1,5 +1,6 @@
 import { EscrowStatus, FightStatus, WithdrawRequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export type AdminUserRow = {
   id: string;
@@ -21,7 +22,9 @@ export type AdminUserRow = {
 };
 
 export async function getAdminUsers(): Promise<AdminUserRow[]> {
+  const serverId = await getScopedServerId();
   const users = await prisma.user.findMany({
+    where: { serverId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -42,27 +45,27 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
     await Promise.all([
       prisma.escrow.groupBy({
         by: ["userId"],
-        where: { userId: { in: userIds }, status: EscrowStatus.LOCKED },
+        where: { userId: { in: userIds }, status: EscrowStatus.LOCKED, fight: { serverId } },
         _sum: { amount: true },
       }),
       prisma.withdrawRequest.groupBy({
         by: ["userId"],
-        where: { userId: { in: userIds }, status: WithdrawRequestStatus.PENDING },
+        where: { serverId, userId: { in: userIds }, status: WithdrawRequestStatus.PENDING },
         _sum: { amount: true },
       }),
       prisma.walletTransaction.groupBy({
         by: ["userId"],
-        where: { userId: { in: userIds }, type: "PAYOUT" },
+        where: { serverId, userId: { in: userIds }, type: "PAYOUT" },
         _sum: { amount: true },
       }),
       prisma.fight.groupBy({
         by: ["winnerId"],
-        where: { winnerId: { in: userIds }, status: FightStatus.COMPLETED },
+        where: { serverId, winnerId: { in: userIds }, status: FightStatus.COMPLETED },
         _count: { id: true },
       }),
       prisma.escrow.groupBy({
         by: ["userId"],
-        where: { userId: { in: userIds } },
+        where: { userId: { in: userIds }, fight: { serverId } },
         _sum: { amount: true },
       }),
     ]);
@@ -76,6 +79,7 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
 
   const lostFights = await prisma.fight.findMany({
     where: {
+      serverId,
       status: FightStatus.COMPLETED,
       wagerAmount: { gt: 0 },
       OR: [{ playerAId: { in: userIds } }, { playerBId: { in: userIds } }],
@@ -92,6 +96,7 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
 
   const disputeFights = await prisma.fight.findMany({
     where: {
+      serverId,
       status: { in: [FightStatus.DISPUTED, FightStatus.AWAITING_RECORDINGS] },
       OR: [{ playerAId: { in: userIds } }, { playerBId: { in: userIds } }],
     },
@@ -128,8 +133,9 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
 }
 
 export async function getAdminUserDetail(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const serverId = await getScopedServerId();
+  const user = await prisma.user.findFirst({
+    where: { serverId, id: userId },
     select: {
       id: true,
       minecraftUsername: true,
@@ -148,11 +154,12 @@ export async function getAdminUserDetail(userId: string) {
   const [escrowTotal, recentFights, recentTx, deposits, withdrawals, auditNotes] =
     await Promise.all([
       prisma.escrow.aggregate({
-        where: { userId, status: EscrowStatus.LOCKED },
+        where: { userId, status: EscrowStatus.LOCKED, fight: { serverId } },
         _sum: { amount: true },
       }),
       prisma.fight.findMany({
         where: {
+          serverId,
           OR: [{ playerAId: userId }, { playerBId: userId }, { createdById: userId }],
         },
         orderBy: { createdAt: "desc" },
@@ -164,22 +171,22 @@ export async function getAdminUserDetail(userId: string) {
         },
       }),
       prisma.walletTransaction.findMany({
-        where: { userId },
+        where: { serverId, userId },
         orderBy: { createdAt: "desc" },
         take: 15,
       }),
       prisma.depositRequest.findMany({
-        where: { userId },
+        where: { serverId, userId },
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
       prisma.withdrawRequest.findMany({
-        where: { userId },
+        where: { serverId, userId },
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
       prisma.adminAuditLog.findMany({
-        where: { targetType: "user", targetId: userId },
+        where: { serverId, targetType: "user", targetId: userId },
         orderBy: { createdAt: "desc" },
         take: 20,
         include: { admin: { select: { discordUsername: true } } },
@@ -188,6 +195,7 @@ export async function getAdminUserDetail(userId: string) {
 
   const disputeFights = await prisma.fight.findMany({
     where: {
+      serverId,
       status: { in: [FightStatus.DISPUTED, FightStatus.AWAITING_RECORDINGS] },
       OR: [{ playerAId: userId }, { playerBId: userId }],
     },

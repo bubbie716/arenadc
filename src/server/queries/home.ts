@@ -4,11 +4,14 @@ import { fightInclude } from "@/lib/mappers";
 import { homepageFightWhere } from "@/lib/fight-statuses";
 import { prisma } from "@/lib/prisma";
 import { FightStatus } from "@prisma/client";
+import { getScopedServerId } from "@/server/scope";
 import type { Rivalry, TrendingFighter } from "@/lib/types";
 
 export async function getFeaturedRivalry(): Promise<Rivalry | null> {
+  const serverId = await getScopedServerId();
   const fight = await prisma.fight.findFirst({
     where: {
+      serverId,
       ...homepageFightWhere(),
       playerBId: { not: null },
       status: {
@@ -43,13 +46,14 @@ export async function getFeaturedRivalry(): Promise<Rivalry | null> {
 }
 
 export async function getHomePageData() {
+  const serverId = await getScopedServerId();
   const [platformStats, trendingFighter, rivalry, rankedFighters] = await Promise.all([
     getPlatformStats(),
     getTopFighter(),
     getFeaturedRivalry(),
     prisma.user
       .findMany({
-        where: { minecraftUsername: { not: null } },
+        where: { serverId, minecraftUsername: { not: null } },
         orderBy: { walletBalance: "desc" },
         take: 5,
         select: { minecraftUsername: true },

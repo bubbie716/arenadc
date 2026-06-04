@@ -1,5 +1,8 @@
-import { calculatePot, formatRmd } from "@/lib/utils";
+"use client";
+
+import { calculatePot } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
 
 interface PotShowcaseProps {
   wagerAmount: number;
@@ -8,6 +11,7 @@ interface PotShowcaseProps {
 }
 
 export function PotShowcase({ wagerAmount, platformFeePercent, className }: PotShowcaseProps) {
+  const formatMoney = useFormatCurrency();
   const { totalPot, platformFee, winnerPayout } = calculatePot(wagerAmount, platformFeePercent);
 
   return (
@@ -22,10 +26,10 @@ export function PotShowcase({ wagerAmount, platformFeePercent, className }: PotS
           🔥 Total Pot
         </p>
         <p className="mt-2 text-5xl font-black tabular-nums tracking-tight sm:text-6xl">
-          {formatRmd(totalPot)}
+          {formatMoney(totalPot)}
         </p>
         <p className="mt-2.5 text-sm text-muted">
-          {formatRmd(wagerAmount)} per fighter · locked in escrow
+          {formatMoney(wagerAmount)} per fighter · locked in escrow
         </p>
       </div>
 
@@ -35,7 +39,7 @@ export function PotShowcase({ wagerAmount, platformFeePercent, className }: PotS
             Winner Receives
           </p>
           <p className="mt-2 text-3xl font-black text-success tabular-nums">
-            {formatRmd(winnerPayout)}
+            {formatMoney(winnerPayout)}
           </p>
         </div>
         <div className="flex min-h-[7.5rem] flex-col justify-center rounded-2xl border border-border bg-surface-elevated p-5 sm:p-6">
@@ -43,7 +47,7 @@ export function PotShowcase({ wagerAmount, platformFeePercent, className }: PotS
             Platform Fee ({platformFeePercent}%)
           </p>
           <p className="mt-2 text-2xl font-bold text-muted tabular-nums">
-            {formatRmd(platformFee)}
+            {formatMoney(platformFee)}
           </p>
         </div>
       </div>

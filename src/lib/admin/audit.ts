@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export const AdminAuditAction = {
   DEPOSIT_APPROVED: "deposit.approved",
@@ -35,8 +36,10 @@ export async function logAdminAction(params: {
   note?: string | null;
   metadata?: Record<string, unknown>;
 }) {
+  const serverId = await getScopedServerId();
   await prisma.adminAuditLog.create({
     data: {
+      serverId,
       adminId: params.adminId,
       action: params.action,
       targetType: params.targetType,

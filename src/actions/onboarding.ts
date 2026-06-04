@@ -8,6 +8,7 @@ import {
   completeOnboardingWithReferral,
 } from "@/server/referrals";
 import { getResolvedPlatformSettings } from "@/server/platform-settings";
+import { getScopedServerId } from "@/server/scope";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -26,8 +27,12 @@ export async function linkMinecraftUsername(username: string): Promise<ActionRes
     return { ok: false, error: "Enter a valid Minecraft username." };
   }
 
-  const existing = await prisma.user.findUnique({
-    where: { minecraftUsername: trimmed },
+  const serverId = await getScopedServerId();
+  const existing = await prisma.user.findFirst({
+    where: {
+      serverId,
+      minecraftUsername: { equals: trimmed, mode: "insensitive" },
+    },
   });
   if (existing && existing.id !== userId) {
     return { ok: false, error: "That Minecraft username is already linked." };

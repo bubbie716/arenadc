@@ -1,11 +1,14 @@
 import { FightResultType, FightStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 /** Move accepted fights past their scheduled time into awaiting-result state. */
 export async function syncPastScheduledFights() {
+  const serverId = await getScopedServerId();
   const now = new Date();
   await prisma.fight.updateMany({
     where: {
+      serverId,
       status: {
         in: [
           FightStatus.CONFIRMED,
@@ -20,8 +23,9 @@ export async function syncPastScheduledFights() {
 }
 
 export async function tryFinalizeFightFromResults(fightId: string) {
-  const fight = await prisma.fight.findUnique({
-    where: { id: fightId },
+  const serverId = await getScopedServerId();
+  const fight = await prisma.fight.findFirst({
+    where: { id: fightId, serverId },
     include: { results: true },
   });
 

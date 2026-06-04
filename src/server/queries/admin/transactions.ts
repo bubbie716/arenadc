@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export type AdminTransactionRow = {
   id: string;
@@ -14,7 +15,9 @@ export type AdminTransactionRow = {
 };
 
 export async function getAdminTransactions(limit = 300): Promise<AdminTransactionRow[]> {
+  const serverId = await getScopedServerId();
   const rows = await prisma.walletTransaction.findMany({
+    where: { serverId },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: {
@@ -27,7 +30,7 @@ export async function getAdminTransactions(limit = 300): Promise<AdminTransactio
   const admins =
     adminIds.length > 0
       ? await prisma.user.findMany({
-          where: { id: { in: adminIds } },
+          where: { serverId, id: { in: adminIds } },
           select: { id: true, discordUsername: true },
         })
       : [];

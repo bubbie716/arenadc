@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { FightResultType, FightStatus, WalletTransactionType } from "@prisma/client";
 import { formatFightDisplayId } from "@/lib/fight-display";
+import { getActiveServerConfig } from "@/lib/server-context";
+import { formatCurrency } from "@/lib/utils";
 import { requireOnboardedUser, requireSessionUser } from "@/lib/auth/session";
 import { assertCanParticipateInFight } from "@/lib/account-restrictions";
 import { getResolvedPlatformSettings } from "@/server/platform-settings";
@@ -23,6 +25,7 @@ import { payoutFightWinner, refundFightEscrow } from "@/server/fight-payout";
 import { syncPastScheduledFights, tryFinalizeFightFromResults } from "@/server/fight-status";
 import { normalizeFightLocation, validateFightLocation } from "@/lib/fight-location";
 import { getDefaultArena } from "@/server/arenas";
+import { getScopedServerId } from "@/server/scope";
 import type { FormatId, RulesetId } from "@/lib/types";
 
 export type ActionResult<T = void> =
@@ -40,6 +43,8 @@ export async function createFight(input: {
 }): Promise<ActionResult<{ fightId: string; fightNumber: number; displayId: string }>> {
   try {
     const user = await requireOnboardedUser();
+    const serverId = await getScopedServerId();
+    const config = await getActiveServerConfig();
 
     const platformSettings = await getResolvedPlatformSettings();
     if (!platformSettings.fightCreationEnabled) {
@@ -55,7 +60,10 @@ export async function createFight(input: {
       return { ok: false, error: "Wager cannot be negative." };
     }
     if (input.wagerAmount > 0 && input.wagerAmount < 100) {
-      return { ok: false, error: "Minimum wager is 100 RMD (or choose Free)." };
+      return {
+        ok: false,
+        error: `Minimum wager is ${formatCurrency(100, config)} (or choose Free).`,
+      };
     }
 
     const scheduledAt = new Date(input.scheduledAt);
@@ -87,6 +95,7 @@ export async function createFight(input: {
 
       const opponent = await prisma.user.findFirst({
         where: {
+          serverId,
           minecraftUsername: { equals: opponentName, mode: "insensitive" },
           onboardingComplete: true,
         },
@@ -126,6 +135,7 @@ export async function createFight(input: {
 
     const fight = await prisma.fight.create({
       data: {
+        serverId,
         createdById: user.id,
         opponentMcName: input.isOpenChallenge ? null : resolvedOpponentName,
         isOpenChallenge: input.isOpenChallenge,
@@ -174,9 +184,11 @@ export async function createFight(input: {
 export async function acceptFight(fightId: string): Promise<ActionResult> {
   try {
     const user = await requireOnboardedUser();
+    const serverId = await getScopedServerId();
+    const config = await getActiveServerConfig();
 
-    const fight = await prisma.fight.findUnique({
-      where: { id: fightId },
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
       include: { createdBy: true },
     });
 
@@ -220,12 +232,15 @@ export async function acceptFight(fightId: string): Promise<ActionResult> {
       if (user.walletBalance < fight.wagerAmount) {
         return {
           ok: false,
-          error: `Insufficient balance. You need ${fight.wagerAmount.toLocaleString()} RMD.`,
+          error: `Insufficient balance. You need ${formatCurrency(fight.wagerAmount, config)}.`,
         };
       }
 
       if (creator.walletBalance < fight.wagerAmount) {
-        return { ok: false, error: "Creator no longer has enough RMD for this wager." };
+        return {
+          ok: false,
+          error: `Creator no longer has enough ${config.currencyCode} for this wager.`,
+        };
       }
     }
 
@@ -288,8 +303,11 @@ export async function acceptFight(fightId: string): Promise<ActionResult> {
 export async function declineFight(fightId: string): Promise<ActionResult> {
   try {
     const user = await requireOnboardedUser();
+    const serverId = await getScopedServerId();
 
-    const fight = await prisma.fight.findUnique({ where: { id: fightId } });
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
+    });
     if (!fight || fight.status !== FightStatus.PENDING_ACCEPTANCE) {
       return { ok: false, error: "This fight cannot be declined." };
     }
@@ -331,7 +349,10 @@ export async function reportFightResult(
 ): Promise<ActionResult> {
   try {
     const user = await requireSessionUser();
-    const fight = await prisma.fight.findUnique({ where: { id: fightId } });
+    const serverId = await getScopedServerId();
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
+    });
 
     if (!fight) return { ok: false, error: "Fight not found." };
     if (fight.playerAId !== user.id && fight.playerBId !== user.id) {
@@ -423,7 +444,10 @@ export async function adminUpdateFightStatus(
     const user = await requireSessionUser();
     if (!user.isAdmin) return { ok: false, error: "Admin only." };
 
-    const fight = await prisma.fight.findUnique({ where: { id: fightId } });
+    const serverId = await getScopedServerId();
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
+    });
     if (!fight) return { ok: false, error: "Fight not found." };
 
     if (action === "dispute") {

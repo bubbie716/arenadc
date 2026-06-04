@@ -1,8 +1,10 @@
 import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
+import { getActiveServerConfig } from "@/lib/server-context";
 import {
   getPlatformSettings,
   type PlatformSettingsMap,
 } from "@/server/queries/admin/settings";
+import { getScopedServerId } from "@/server/scope";
 
 export type ResolvedPlatformSettings = {
   platformFeePercent: number;
@@ -18,19 +20,25 @@ export type ResolvedPlatformSettings = {
 
 const DEFAULT_DISCORD_INVITE = "https://discord.gg/arenamc";
 
-let cache: { at: number; raw: PlatformSettingsMap } | null = null;
+const caches = new Map<string, { at: number; raw: PlatformSettingsMap }>();
 const CACHE_TTL_MS = 15_000;
 
-export function invalidatePlatformSettingsCache() {
-  cache = null;
+export function invalidatePlatformSettingsCache(serverId?: string) {
+  if (serverId) {
+    caches.delete(serverId);
+  } else {
+    caches.clear();
+  }
 }
 
 async function getRawSettings(): Promise<PlatformSettingsMap> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
-    return cache.raw;
+  const serverId = await getScopedServerId();
+  const cached = caches.get(serverId);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    return cached.raw;
   }
-  const raw = await getPlatformSettings();
-  cache = { at: Date.now(), raw };
+  const raw = await getPlatformSettings(serverId);
+  caches.set(serverId, { at: Date.now(), raw });
   return raw;
 }
 
@@ -55,8 +63,9 @@ function parseNonNegativeInt(value: string, fallback: number): number {
 }
 
 export async function getResolvedPlatformSettings(): Promise<ResolvedPlatformSettings> {
+  const config = await getActiveServerConfig();
   const raw = await getRawSettings();
-  const depositAccountName = raw.deposit_account_name.trim() || "ArenaMC";
+  const depositAccountName = raw.deposit_account_name.trim() || config.depositAccountName;
   const discordInviteUrl = raw.discord_invite_url.trim() || DEFAULT_DISCORD_INVITE;
 
   return {

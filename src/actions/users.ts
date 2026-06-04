@@ -2,6 +2,7 @@
 
 import { requireSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export type OpponentLookupResult =
   | { status: "valid"; username: string }
@@ -20,8 +21,10 @@ export async function lookupRegisteredOpponent(
     return { status: "self" };
   }
 
+  const serverId = await getScopedServerId();
   const user = await prisma.user.findFirst({
     where: {
+      serverId,
       minecraftUsername: { equals: trimmed, mode: "insensitive" },
       onboardingComplete: true,
     },
@@ -40,12 +43,14 @@ export async function searchRegisteredOpponents(
   selfMcName: string | null,
 ): Promise<string[]> {
   await requireSessionUser();
+  const serverId = await getScopedServerId();
 
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
 
   const users = await prisma.user.findMany({
     where: {
+      serverId,
       onboardingComplete: true,
       minecraftUsername: {
         not: null,

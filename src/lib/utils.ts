@@ -1,6 +1,8 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { PLATFORM_FEE_PERCENT } from "./constants";
+import type { ServerConfig } from "@/lib/server-config";
+import { getServerConfig, type ServerId } from "@/lib/server-config";
 import type { FightStatus, FormatId, RulesetId } from "./types";
 import { FORMATS, LEGACY_FORMAT_LABELS, LEGACY_RULESET_LABELS, RULESETS } from "@/lib/constants";
 
@@ -8,11 +10,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatRmd(amount: number, compact = false): string {
-  if (compact && amount >= 1000) {
-    return `${amount % 1000 === 0 ? amount / 1000 : (amount / 1000).toFixed(1)}k RMD`;
+/** Format amount with server currency (symbol + code). */
+export function formatCurrency(
+  amount: number,
+  config: ServerConfig,
+  options?: { compact?: boolean; symbolOnly?: boolean },
+): string {
+  const compact = options?.compact ?? false;
+  const formattedAmount = compact && amount >= 1000
+    ? `${amount % 1000 === 0 ? amount / 1000 : (amount / 1000).toFixed(1)}k`
+    : amount.toLocaleString();
+
+  const withSymbol = `${config.currencySymbol}${formattedAmount}`;
+
+  if (options?.symbolOnly) {
+    return withSymbol;
   }
-  return `${amount.toLocaleString()} RMD`;
+
+  return `${withSymbol} ${config.currencyCode}`;
+}
+
+/** @deprecated Use formatCurrency(amount, config) with server config. */
+export function formatRmd(amount: number, compact = false, serverId: ServerId = "dc"): string {
+  return formatCurrency(amount, getServerConfig(serverId), { compact });
 }
 
 /** Stable date/time text for SSR + hydration (avoids locale literal differences like "," vs " at "). */

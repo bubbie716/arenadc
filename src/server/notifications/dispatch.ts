@@ -1,5 +1,6 @@
 import type { NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export type NotificationInput = {
   userId: string;
@@ -11,10 +12,10 @@ export type NotificationInput = {
   silent?: boolean;
 };
 
-async function getMutedUserIds(userIds: string[]): Promise<Set<string>> {
+async function getMutedUserIds(serverId: string, userIds: string[]): Promise<Set<string>> {
   if (userIds.length === 0) return new Set();
   const rows = await prisma.user.findMany({
-    where: { id: { in: userIds }, notificationsMuted: true },
+    where: { serverId, id: { in: userIds }, notificationsMuted: true },
     select: { id: true },
   });
   return new Set(rows.map((r) => r.id));
@@ -24,14 +25,16 @@ async function getMutedUserIds(userIds: string[]): Promise<Set<string>> {
 export async function sendNotification(input: NotificationInput): Promise<boolean> {
   if (input.silent) return false;
 
-  const user = await prisma.user.findUnique({
-    where: { id: input.userId },
+  const serverId = await getScopedServerId();
+  const user = await prisma.user.findFirst({
+    where: { serverId, id: input.userId },
     select: { notificationsMuted: true },
   });
   if (!user || user.notificationsMuted) return false;
 
   await prisma.notification.create({
     data: {
+      serverId,
       userId: input.userId,
       type: input.type,
       title: input.title,
@@ -46,12 +49,14 @@ export async function sendNotifications(inputs: NotificationInput[]): Promise<nu
   const eligible = inputs.filter((i) => !i.silent);
   if (eligible.length === 0) return 0;
 
-  const muted = await getMutedUserIds([...new Set(eligible.map((i) => i.userId))]);
+  const serverId = await getScopedServerId();
+  const muted = await getMutedUserIds(serverId, [...new Set(eligible.map((i) => i.userId))]);
   const toCreate = eligible.filter((i) => !muted.has(i.userId));
   if (toCreate.length === 0) return 0;
 
   await prisma.notification.createMany({
     data: toCreate.map(({ userId, type, title, message, relatedFightId }) => ({
+      serverId,
       userId,
       type,
       title,
@@ -63,8 +68,9 @@ export async function sendNotifications(inputs: NotificationInput[]): Promise<nu
 }
 
 export async function isUserNotificationsMuted(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const serverId = await getScopedServerId();
+  const user = await prisma.user.findFirst({
+    where: { serverId, id: userId },
     select: { notificationsMuted: true },
   });
   return user?.notificationsMuted ?? false;

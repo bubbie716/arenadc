@@ -1,11 +1,15 @@
 import { DepositRequestStatus, EscrowStatus, FightStatus, WithdrawRequestStatus } from "@prisma/client";
-import { getPlatformFeePercent } from "@/server/platform-settings";
+import { getActiveServerConfig } from "@/lib/server-context";
 import type { AdminActivityItem, AdminOverviewStats } from "@/lib/admin/types";
+import { formatCurrency } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
+import { getPlatformFeePercent } from "@/server/platform-settings";
+import { getScopedServerId } from "@/server/scope";
 
 const ACTIVE_USER_DAYS = 30;
 
 export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
+  const serverId = await getScopedServerId();
   const weekAgo = new Date(Date.now() - ACTIVE_USER_DAYS * 24 * 60 * 60 * 1000);
 
   const [
@@ -23,20 +27,22 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     pendingWithdrawals,
     platformFeePercent,
   ] = await Promise.all([
-    prisma.user.count(),
+    prisma.user.count({ where: { serverId } }),
     prisma.user.count({
       where: {
+        serverId,
         minecraftUsername: { not: null },
         OR: [
-          { createdFights: { some: { createdAt: { gte: weekAgo } } } },
-          { fightsAsPlayerA: { some: { createdAt: { gte: weekAgo } } } },
-          { fightsAsPlayerB: { some: { createdAt: { gte: weekAgo } } } },
+          { createdFights: { some: { serverId, createdAt: { gte: weekAgo } } } },
+          { fightsAsPlayerA: { some: { serverId, createdAt: { gte: weekAgo } } } },
+          { fightsAsPlayerB: { some: { serverId, createdAt: { gte: weekAgo } } } },
         ],
       },
     }),
-    prisma.fight.count(),
+    prisma.fight.count({ where: { serverId } }),
     prisma.fight.count({
       where: {
+        serverId,
         status: {
           in: [
             FightStatus.CONFIRMED,
@@ -47,32 +53,38 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
         },
       },
     }),
-    prisma.fight.count({ where: { status: FightStatus.COMPLETED } }),
+    prisma.fight.count({ where: { serverId, status: FightStatus.COMPLETED } }),
     prisma.fight.count({
       where: {
+        serverId,
         status: {
           in: [FightStatus.DISPUTED, FightStatus.AWAITING_RECORDINGS],
         },
       },
     }),
-    prisma.fight.count({ where: { status: FightStatus.REFUNDED } }),
+    prisma.fight.count({ where: { serverId, status: FightStatus.REFUNDED } }),
     prisma.fight.aggregate({
       where: {
+        serverId,
         status: { notIn: [FightStatus.DRAFT, FightStatus.DECLINED] },
         wagerAmount: { gt: 0 },
       },
       _sum: { wagerAmount: true },
     }),
     prisma.escrow.aggregate({
-      where: { status: EscrowStatus.LOCKED },
+      where: { status: EscrowStatus.LOCKED, fight: { serverId } },
       _sum: { amount: true },
     }),
     prisma.fight.aggregate({
-      where: { status: FightStatus.COMPLETED, wagerAmount: { gt: 0 } },
+      where: { serverId, status: FightStatus.COMPLETED, wagerAmount: { gt: 0 } },
       _sum: { wagerAmount: true },
     }),
-    prisma.depositRequest.count({ where: { status: DepositRequestStatus.PENDING } }),
-    prisma.withdrawRequest.count({ where: { status: WithdrawRequestStatus.PENDING } }),
+    prisma.depositRequest.count({
+      where: { serverId, status: DepositRequestStatus.PENDING },
+    }),
+    prisma.withdrawRequest.count({
+      where: { serverId, status: WithdrawRequestStatus.PENDING },
+    }),
     getPlatformFeePercent(),
   ]);
 
@@ -98,8 +110,10 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
 }
 
 export async function getAdminActivityFeed(limit = 20): Promise<AdminActivityItem[]> {
+  const serverId = await getScopedServerId();
   const [fights, deposits, withdrawals, audits] = await Promise.all([
     prisma.fight.findMany({
+      where: { serverId },
       orderBy: { createdAt: "desc" },
       take: limit,
       select: {
@@ -114,16 +128,19 @@ export async function getAdminActivityFeed(limit = 20): Promise<AdminActivityIte
       },
     }),
     prisma.depositRequest.findMany({
+      where: { serverId },
       orderBy: { createdAt: "desc" },
       take: limit,
       include: { user: { select: { minecraftUsername: true } } },
     }),
     prisma.withdrawRequest.findMany({
+      where: { serverId },
       orderBy: { createdAt: "desc" },
       take: limit,
       include: { user: { select: { minecraftUsername: true } } },
     }),
     prisma.adminAuditLog.findMany({
+      where: { serverId },
       orderBy: { createdAt: "desc" },
       take: limit,
       include: { admin: { select: { discordUsername: true } } },
@@ -164,6 +181,9 @@ export async function getAdminActivityFeed(limit = 20): Promise<AdminActivityIte
     });
   }
 
+  const config = await getActiveServerConfig();
+  const fmt = (amount: number) => formatCurrency(amount, config);
+
   for (const d of deposits) {
     const user = d.user.minecraftUsername ?? "User";
     items.push({
@@ -171,8 +191,8 @@ export async function getAdminActivityFeed(limit = 20): Promise<AdminActivityIte
       kind: `deposit.${d.status.toLowerCase()}`,
       message:
         d.status === DepositRequestStatus.PENDING
-          ? `Deposit requested — ${user} · ${d.amount} RMD`
-          : `Deposit ${d.status.toLowerCase()} — ${user} · ${d.amount} RMD`,
+          ? `Deposit requested — ${user} · ${fmt(d.amount)}`
+          : `Deposit ${d.status.toLowerCase()} — ${user} · ${fmt(d.amount)}`,
       createdAt: (d.reviewedAt ?? d.createdAt).toISOString(),
     });
   }
@@ -184,8 +204,8 @@ export async function getAdminActivityFeed(limit = 20): Promise<AdminActivityIte
       kind: `withdrawal.${w.status.toLowerCase()}`,
       message:
         w.status === WithdrawRequestStatus.PENDING
-          ? `Withdrawal requested — ${user} · ${w.amount} RMD`
-          : `Withdrawal ${w.status.toLowerCase()} — ${user} · ${w.amount} RMD`,
+          ? `Withdrawal requested — ${user} · ${fmt(w.amount)}`
+          : `Withdrawal ${w.status.toLowerCase()} — ${user} · ${fmt(w.amount)}`,
       createdAt: (w.reviewedAt ?? w.createdAt).toISOString(),
     });
   }

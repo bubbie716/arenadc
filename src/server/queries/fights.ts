@@ -7,31 +7,38 @@ import {
 import { prisma } from "@/lib/prisma";
 import { repairAllFightDisplayNumbers } from "@/server/fight-display";
 import { syncPastScheduledFights } from "@/server/fight-status";
+import { getScopedServerId } from "@/server/scope";
 import type { Fight } from "@/lib/types";
 
-async function loadFights(args: Prisma.FightFindManyArgs): Promise<Fight[]> {
+async function loadFights(
+  serverId: string,
+  args: Prisma.FightFindManyArgs,
+): Promise<Fight[]> {
   await syncPastScheduledFights();
   await repairAllFightDisplayNumbers();
   const fights = await prisma.fight.findMany({
     ...args,
+    where: { serverId, ...(args.where as object) },
     include: args.include ?? fightInclude,
   });
   return fights.map(mapFightToUI);
 }
 
 export async function getFightById(id: string): Promise<Fight | null> {
+  const serverId = await getScopedServerId();
   await syncPastScheduledFights();
   await repairAllFightDisplayNumbers();
-  const fight = await prisma.fight.findUnique({
-    where: { id },
+  const fight = await prisma.fight.findFirst({
+    where: { id, serverId },
     include: fightInclude,
   });
   return fight ? mapFightToUI(fight) : null;
 }
 
 export async function getFightByIdRaw(id: string) {
-  return prisma.fight.findUnique({
-    where: { id },
+  const serverId = await getScopedServerId();
+  return prisma.fight.findFirst({
+    where: { id, serverId },
     include: {
       ...fightInclude,
       createdBy: true,
@@ -42,7 +49,8 @@ export async function getFightByIdRaw(id: string) {
 }
 
 export async function getFightsStartingSoon(limit = 4): Promise<Fight[]> {
-  return loadFights({
+  const serverId = await getScopedServerId();
+  return loadFights(serverId, {
     where: {
       AND: [
         homepageFightWhere(),
@@ -60,7 +68,8 @@ export async function getFightsStartingSoon(limit = 4): Promise<Fight[]> {
 }
 
 export async function getBiggestPotFights(limit = 4): Promise<Fight[]> {
-  return loadFights({
+  const serverId = await getScopedServerId();
+  return loadFights(serverId, {
     where: {
       AND: [
         homepageFightWhere(),
@@ -84,7 +93,8 @@ export async function getBiggestPotFights(limit = 4): Promise<Fight[]> {
 }
 
 export async function getRecentResults(limit = 4): Promise<Fight[]> {
-  return loadFights({
+  const serverId = await getScopedServerId();
+  return loadFights(serverId, {
     where: {
       status: DbFightStatus.COMPLETED,
       completedAt: { gte: homepageCompletedVisibleSince() },
@@ -96,12 +106,16 @@ export async function getRecentResults(limit = 4): Promise<Fight[]> {
 }
 
 export async function getUserRecentFights(minecraftUsername: string, limit = 6) {
-  const user = await prisma.user.findUnique({
-    where: { minecraftUsername },
+  const serverId = await getScopedServerId();
+  const user = await prisma.user.findFirst({
+    where: {
+      serverId,
+      minecraftUsername: { equals: minecraftUsername, mode: "insensitive" },
+    },
   });
   if (!user) return [];
 
-  return loadFights({
+  return loadFights(serverId, {
     where: {
       OR: [
         { playerAId: user.id },
@@ -120,25 +134,29 @@ export async function getUserRecentFights(minecraftUsername: string, limit = 6) 
 }
 
 export async function getAllFightsForAdmin() {
-  return loadFights({
+  const serverId = await getScopedServerId();
+  return loadFights(serverId, {
     include: fightInclude,
     orderBy: { createdAt: "desc" },
   });
 }
 
 export async function getFightCount(): Promise<number> {
-  return prisma.fight.count();
+  const serverId = await getScopedServerId();
+  return prisma.fight.count({ where: { serverId } });
 }
 
 export async function getPlatformStats() {
+  const serverId = await getScopedServerId();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [activeFighters, rmdWageredToday, fightsThisWeek, largestPot] = await Promise.all([
-    prisma.user.count({ where: { minecraftUsername: { not: null } } }),
+    prisma.user.count({ where: { serverId, minecraftUsername: { not: null } } }),
     prisma.fight.aggregate({
       where: {
+        serverId,
         createdAt: { gte: startOfDay },
         status: { notIn: [DbFightStatus.DRAFT, DbFightStatus.PENDING_ACCEPTANCE, DbFightStatus.DECLINED] },
       },
@@ -146,12 +164,14 @@ export async function getPlatformStats() {
     }),
     prisma.fight.count({
       where: {
+        serverId,
         createdAt: { gte: weekAgo },
         status: { notIn: [DbFightStatus.DRAFT, DbFightStatus.PENDING_ACCEPTANCE] },
       },
     }),
     prisma.fight.findFirst({
       where: {
+        serverId,
         createdAt: { gte: startOfDay },
         ...homepageFightWhere(),
       },

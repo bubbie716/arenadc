@@ -32,7 +32,8 @@ import { ADMIN_TABS, type AdminTab } from "@/lib/admin/types";
 import type { AdminDashboardData } from "@/server/queries/admin/index";
 import type { AdminUserRow } from "@/server/queries/admin/users";
 import type { FightStatus, RulesetId } from "@/lib/types";
-import { cn, formatDate, formatRmd, getRulesetLabel } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
+import { cn, formatDate, getRulesetLabel } from "@/lib/utils";
 
 type ConfirmState = {
   title: string;
@@ -45,6 +46,7 @@ type ConfirmState = {
 };
 
 export function AdminDashboard({ data }: { data: AdminDashboardData }) {
+  const formatMoney = useFormatCurrency();
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = (searchParams.get("tab") as AdminTab) || "overview";
@@ -157,11 +159,11 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
             <StatCard label="Completed Fights" value={data.stats.completedFights} />
             <StatCard label="Disputed Fights" value={data.stats.disputedFights} />
             <StatCard label="Refunded Fights" value={data.stats.refundedFights} />
-            <StatCard label="Total RMD Wagered" value={formatRmd(data.stats.totalRmdWagered)} />
-            <StatCard label="RMD in Escrow" value={formatRmd(data.stats.totalRmdInEscrow)} />
+            <StatCard label="Total RMD Wagered" value={formatMoney(data.stats.totalRmdWagered)} />
+            <StatCard label="RMD in Escrow" value={formatMoney(data.stats.totalRmdInEscrow)} />
             <StatCard
               label="Platform Fees Earned"
-              value={formatRmd(data.stats.totalPlatformFees)}
+              value={formatMoney(data.stats.totalPlatformFees)}
             />
             <StatCard label="Pending Deposits" value={data.stats.pendingDeposits} />
             <StatCard label="Pending Withdrawals" value={data.stats.pendingWithdrawals} />
@@ -267,11 +269,11 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                 <td className="px-4 py-3">
                   <FighterCell a={fight.playerA} b={fight.playerB} />
                 </td>
-                <td className="px-4 py-3 tabular-nums">{formatRmd(fight.wagerAmount)}</td>
+                <td className="px-4 py-3 tabular-nums">{formatMoney(fight.wagerAmount)}</td>
                 <td className="px-4 py-3 text-xs text-muted">
-                  <div>{formatRmd(fight.totalPot)} pot</div>
-                  <div>{formatRmd(fight.platformFee)} fee</div>
-                  <div className="text-foreground">{formatRmd(fight.winnerPayout)} payout</div>
+                  <div>{formatMoney(fight.totalPot)} pot</div>
+                  <div>{formatMoney(fight.platformFee)} fee</div>
+                  <div className="text-foreground">{formatMoney(fight.winnerPayout)} payout</div>
                 </td>
                 <td className="px-4 py-3 text-xs">{getRulesetLabel(fight.ruleset as RulesetId)}</td>
                 <td className="px-4 py-3 text-xs">{fight.arenaName}</td>
@@ -397,7 +399,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                   )}
                 >
                   {tx.amount >= 0 ? "+" : ""}
-                  {formatRmd(Math.abs(tx.amount))}
+                  {formatMoney(Math.abs(tx.amount))}
                 </td>
                 <td className="px-4 py-3 text-xs">{tx.fightLabel ?? "—"}</td>
                 <td className="px-4 py-3 text-xs text-muted">{formatDate(tx.createdAt)}</td>
@@ -428,7 +430,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                       {d.displayId}
                     </Link>
                     <p className="mt-1 text-sm">
-                      {d.playerA} vs {d.playerB} · {formatRmd(d.wagerAmount)} each ·{" "}
+                      {d.playerA} vs {d.playerB} · {formatMoney(d.wagerAmount)} each ·{" "}
                       {getRulesetLabel(d.ruleset as RulesetId)}
                     </p>
                     <p className="text-xs text-muted">
@@ -577,6 +579,7 @@ function UsersTab({
   openConfirm: (s: ConfirmState) => void;
   runAction: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
 }) {
+  const formatMoney = useFormatCurrency();
   const [detailId, setDetailId] = useState<string | null>(null);
   const detail = detailId ? users.find((u) => u.id === detailId) : null;
   const [adjustAmount, setAdjustAmount] = useState("");
@@ -616,12 +619,12 @@ function UsersTab({
               </button>
             </td>
             <td className="whitespace-nowrap px-4 py-4 text-xs">{u.discordUsername}</td>
-            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatRmd(u.walletBalance)}</td>
-            <td className="whitespace-nowrap px-4 py-4 tabular-nums text-muted">{formatRmd(u.escrowBalance)}</td>
-            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatRmd(u.pendingWithdrawals)}</td>
-            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatRmd(u.totalWagered)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatMoney(u.walletBalance)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums text-muted">{formatMoney(u.escrowBalance)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatMoney(u.pendingWithdrawals)}</td>
+            <td className="whitespace-nowrap px-4 py-4 tabular-nums">{formatMoney(u.totalWagered)}</td>
             <td className="whitespace-nowrap px-4 py-4 tabular-nums text-success">
-              {formatRmd(u.totalEarnings)}
+              {formatMoney(u.totalEarnings)}
             </td>
             <td className="whitespace-nowrap px-4 py-4 text-xs">
               {u.wins}/{u.losses}
@@ -700,11 +703,11 @@ function UsersTab({
             <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
               <div>
                 <dt className="text-xs text-muted">Balance</dt>
-                <dd className="font-semibold">{formatRmd(detail.walletBalance)}</dd>
+                <dd className="font-semibold">{formatMoney(detail.walletBalance)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted">In escrow</dt>
-                <dd>{formatRmd(detail.escrowBalance)}</dd>
+                <dd>{formatMoney(detail.escrowBalance)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted">Record</dt>
@@ -801,6 +804,7 @@ function WalletTab({
   openConfirm: (s: ConfirmState) => void;
   runAction: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
 }) {
+  const formatMoney = useFormatCurrency();
   const filters = ["pending", "approved", "rejected", "all"];
   const matchStatus = (status: string) => {
     if (filter === "all") return true;
@@ -841,7 +845,7 @@ function WalletTab({
               <td className="px-4 py-3 text-sm">
                 {d.user.minecraftUsername ?? d.user.discordUsername}
               </td>
-              <td className="px-4 py-3 font-semibold">{formatRmd(d.amount)}</td>
+              <td className="px-4 py-3 font-semibold">{formatMoney(d.amount)}</td>
               <td className="px-4 py-3 text-xs">
                 <a
                   href={d.proofImageUrl}
@@ -899,7 +903,7 @@ function WalletTab({
                 {w.user.minecraftUsername ?? w.user.discordUsername}
               </td>
               <td className="px-4 py-3 text-sm font-medium">{w.minecraftUsername}</td>
-              <td className="px-4 py-3 font-semibold">{formatRmd(w.amount)}</td>
+              <td className="px-4 py-3 font-semibold">{formatMoney(w.amount)}</td>
               <td className="px-4 py-3 text-xs">{w.status}</td>
               <td className="px-4 py-3 text-xs text-muted">{formatDate(w.createdAt)}</td>
               <td className="px-4 py-3">

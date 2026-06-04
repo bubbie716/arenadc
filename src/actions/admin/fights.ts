@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { requireAdminNote } from "@/lib/admin/notes";
 import { formatFightDisplayId } from "@/lib/fight-display";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 import { payoutFightWinner, refundFightEscrow } from "@/server/fight-payout";
 import { notifyFightResolved } from "@/server/notifications";
 
@@ -27,8 +28,11 @@ export async function adminFightAction(
   try {
     const admin = await requireAdmin();
     const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
 
-    const fight = await prisma.fight.findUnique({ where: { id: fightId } });
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
+    });
     if (!fight) return { ok: false, error: "Fight not found." };
 
     const displayId = formatFightDisplayId(fight.fightNumber);
@@ -70,7 +74,9 @@ export async function adminFightAction(
       });
     } else if (action === "refund") {
       await refundFightEscrow(fightId, admin.id);
-      const updated = await prisma.fight.findUnique({ where: { id: fightId } });
+      const updated = await prisma.fight.findFirst({
+        where: { id: fightId, serverId },
+      });
       if (updated?.status !== FightStatus.REFUNDED) {
         await prisma.fight.update({
           where: { id: fightId },

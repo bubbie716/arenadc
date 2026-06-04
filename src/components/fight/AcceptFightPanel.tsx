@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { acceptFight, declineFight } from "@/actions/fights";
 import { FightPrepRemindersModal } from "@/components/fight/FightPrepRemindersModal";
 import { Button } from "@/components/ui/Button";
-import { formatRmd } from "@/lib/utils";
+import { useFormatCurrency, useServerConfig } from "@/components/providers/ServerConfigProvider";
 
 interface AcceptFightPanelProps {
   fightId: string;
@@ -22,6 +22,8 @@ export function AcceptFightPanel({
   canAccept,
   canDecline,
 }: AcceptFightPanelProps) {
+  const formatMoney = useFormatCurrency();
+  const { currencyCode } = useServerConfig();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [prepModalOpen, setPrepModalOpen] = useState(false);
@@ -51,13 +53,13 @@ export function AcceptFightPanel({
       <p className="mt-2 text-sm text-muted">
         {wagerAmount === 0 ? (
           <>
-            This is a <span className="font-bold text-foreground">free fight</span> — no RMD will be
-            escrowed on accept.
+            This is a <span className="font-bold text-foreground">free fight</span> — no {currencyCode}{" "}
+            will be escrowed on accept.
           </>
         ) : (
           <>
             Matching wager required:{" "}
-            <span className="font-bold text-foreground">{formatRmd(wagerAmount)}</span> will be
+            <span className="font-bold text-foreground">{formatMoney(wagerAmount)}</span> will be
             escrowed from your wallet on accept.
           </>
         )}

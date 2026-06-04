@@ -1,10 +1,12 @@
 import { ensureDefaultArenas } from "@/server/arenas";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export async function getApprovedArenas() {
-  await ensureDefaultArenas();
+  const serverId = await getScopedServerId();
+  await ensureDefaultArenas(serverId);
   return prisma.arena.findMany({
-    where: { approved: true },
+    where: { serverId, approved: true },
     orderBy: { name: "asc" },
   });
 }

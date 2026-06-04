@@ -5,6 +5,7 @@ import { adminErrorMessage, type ActionResult } from "@/actions/admin/_result";
 import { AdminAuditAction, logAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/auth";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 import { invalidatePlatformSettingsCache } from "@/server/platform-settings";
 import { PLATFORM_SETTING_KEYS } from "@/server/queries/admin/settings";
 
@@ -13,6 +14,7 @@ export async function adminUpdatePlatformSettings(
 ): Promise<ActionResult> {
   try {
     const admin = await requireAdmin();
+    const serverId = await getScopedServerId();
 
     const allowed = new Set<string>(PLATFORM_SETTING_KEYS);
     const entries = Object.entries(settings).filter(([key]) => allowed.has(key));
@@ -23,8 +25,8 @@ export async function adminUpdatePlatformSettings(
     await prisma.$transaction(
       entries.map(([key, value]) =>
         prisma.platformSetting.upsert({
-          where: { key },
-          create: { key, value, updatedById: admin.id },
+          where: { serverId_key: { serverId, key } },
+          create: { serverId, key, value, updatedById: admin.id },
           update: { value, updatedById: admin.id },
         }),
       ),

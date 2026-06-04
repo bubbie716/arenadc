@@ -1,4 +1,6 @@
+import type { ServerId } from "@/lib/server-config";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 export const DEFAULT_ARENAS = [
   { slug: "spawn-pvp-ring", name: "Spawn PvP Ring", description: "Central spawn duel ring" },
@@ -17,20 +19,21 @@ export const DEFAULT_ARENAS = [
 ] as const;
 
 /** Ensure baseline arenas exist (migration creates the table but does not seed rows). */
-export async function ensureDefaultArenas() {
+export async function ensureDefaultArenas(serverId: ServerId) {
   for (const arena of DEFAULT_ARENAS) {
     await prisma.arena.upsert({
-      where: { slug: arena.slug },
-      create: { ...arena, approved: true },
+      where: { serverId_slug: { serverId, slug: arena.slug } },
+      create: { serverId, ...arena, approved: true },
       update: { name: arena.name, description: arena.description, approved: true },
     });
   }
 }
 
 export async function getDefaultArena() {
-  await ensureDefaultArenas();
+  const serverId = await getScopedServerId();
+  await ensureDefaultArenas(serverId);
   return prisma.arena.findFirst({
-    where: { approved: true },
+    where: { serverId, approved: true },
     orderBy: { slug: "asc" },
   });
 }

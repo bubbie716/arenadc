@@ -1,7 +1,9 @@
+"use client";
+
 import type { FighterStats } from "@/lib/types";
-import { formatRmd } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StreakDisplay } from "@/components/StreakDisplay";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
 
 interface FighterComparisonProps {
   playerA: string;
@@ -50,6 +52,8 @@ export function FighterComparison({
   statsA,
   statsB,
 }: FighterComparisonProps) {
+  const formatMoney = useFormatCurrency();
+
   return (
     <Card className="mb-8">
       <CardHeader>
@@ -78,8 +82,8 @@ export function FighterComparison({
         </div>
         <CompareRow
           label="Earnings"
-          valueA={formatRmd(statsA.totalEarnings, true)}
-          valueB={formatRmd(statsB.totalEarnings, true)}
+          valueA={formatMoney(statsA.totalEarnings, { compact: true })}
+          valueB={formatMoney(statsB.totalEarnings, { compact: true })}
           highlightHigher={
             statsA.totalEarnings > statsB.totalEarnings
               ? "a"

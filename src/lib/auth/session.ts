@@ -1,12 +1,18 @@
 import { auth } from "@/auth";
+import { getServerId } from "@/lib/server-context";
 import { prisma } from "@/lib/prisma";
 
 export async function getSessionUser() {
   const session = await auth();
   if (!session?.user?.dbUserId) return null;
 
-  return prisma.user.findUnique({
-    where: { id: session.user.dbUserId },
+  const serverId = await getServerId();
+
+  return prisma.user.findFirst({
+    where: {
+      id: session.user.dbUserId,
+      serverId,
+    },
   });
 }
 

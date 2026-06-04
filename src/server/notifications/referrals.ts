@@ -1,6 +1,7 @@
 import { NotificationType } from "@prisma/client";
 import { displayReferralCode } from "@/lib/referral-code";
-import { formatRmd } from "@/lib/utils";
+import { getActiveServerConfig } from "@/lib/server-context";
+import { formatCurrency } from "@/lib/utils";
 import { sendNotifications } from "@/server/notifications/dispatch";
 
 export type ReferralRedemptionNotificationParams = {
@@ -13,12 +14,14 @@ export type ReferralRedemptionNotificationParams = {
   referrerBonus: number;
 };
 
-function bonusPhrase(amount: number): string {
-  return amount > 0 ? ` You received ${formatRmd(amount)}.` : "";
+async function bonusPhrase(amount: number) {
+  const config = await getActiveServerConfig();
+  return amount > 0 ? ` You received ${formatCurrency(amount, config)}.` : "";
 }
 
-function earnedPhrase(amount: number): string {
-  return amount > 0 ? ` You earned ${formatRmd(amount)}.` : "";
+async function earnedPhrase(amount: number) {
+  const config = await getActiveServerConfig();
+  return amount > 0 ? ` You earned ${formatCurrency(amount, config)}.` : "";
 }
 
 export async function notifyReferralRedemption(
@@ -33,13 +36,13 @@ export async function notifyReferralRedemption(
       userId: params.referredUserId,
       type: NotificationType.REFERRAL_BONUS_RECEIVED,
       title: "Referral bonus received",
-      message: `You used ${referrerName}'s referral code (${code}).${bonusPhrase(params.newUserBonus)}`,
+      message: `You used ${referrerName}'s referral code (${code}).${await bonusPhrase(params.newUserBonus)}`,
     },
     {
       userId: params.referrerId,
       type: NotificationType.REFERRAL_BONUS_EARNED,
       title: "Referral code used",
-      message: `${referredName} used your referral code (${code}).${earnedPhrase(params.referrerBonus)}`,
+      message: `${referredName} used your referral code (${code}).${await earnedPhrase(params.referrerBonus)}`,
     },
   ]);
 }

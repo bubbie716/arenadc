@@ -5,6 +5,7 @@ import { CommunityPickSide, FightStatus } from "@prisma/client";
 import type { ActionResult } from "@/actions/fights";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 const CLOSED_STATUSES: FightStatus[] = [
   FightStatus.COMPLETED,
@@ -24,8 +25,9 @@ export async function voteCommunityPick(
       return { ok: false, error: "Your account is suspended." };
     }
 
-    const fight = await prisma.fight.findUnique({
-      where: { id: fightId },
+    const serverId = await getScopedServerId();
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
       select: { status: true, playerBId: true },
     });
     if (!fight) {

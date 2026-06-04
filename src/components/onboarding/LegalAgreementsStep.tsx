@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { useServerConfig } from "@/components/providers/ServerConfigProvider";
 import { cn } from "@/lib/utils";
 
 export type LegalAgreementId = "terms" | "privacy" | "fightEscrow";
@@ -70,14 +71,15 @@ export function LegalAgreementsStep({
   onSelectAll,
   onSubmit,
 }: LegalAgreementsStepProps) {
+  const { legalServerName, currencyCode } = useServerConfig();
   const acceptedCount = ALL_LEGAL_IDS.filter((id) => accepted[id]).length;
 
   return (
     <>
       <h2 className="text-2xl font-bold">Legal Agreements</h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">
-        ArenaMC is a DemocracyCraft fan/community platform using in-game RMD only — not real-money
-        gambling. Open each document, then confirm you agree below.
+        ArenaMC is a {legalServerName} fan/community platform using in-game {currencyCode} only — not
+        real-money gambling. Open each document, then confirm you agree below.
       </p>
 
       <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-elevated px-4 py-3">

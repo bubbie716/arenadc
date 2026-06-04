@@ -1,6 +1,9 @@
-import { calculatePot, formatRmd } from "@/lib/utils";
+"use client";
+
+import { calculatePot } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useFormatCurrency, useServerConfig } from "@/components/providers/ServerConfigProvider";
 
 interface FightSummaryCardProps {
   wager: number;
@@ -23,6 +26,8 @@ export function FightSummaryCard({
   exceedsBalance,
   walletBalance,
 }: FightSummaryCardProps) {
+  const formatMoney = useFormatCurrency();
+  const { currencyCode } = useServerConfig();
   const isFree = wager === 0;
   const pot = calculatePot(wager, platformFeePercent);
 
@@ -39,12 +44,12 @@ export function FightSummaryCard({
         <div className="rounded-2xl border border-accent/40 bg-accent/5 px-5 py-6 text-center glow-pot">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-accent">Total Pot</p>
           <p className="mt-2 text-4xl font-black tabular-nums tracking-tight text-gradient-accent sm:text-5xl">
-            {isFree ? "Free" : formatRmd(pot.totalPot)}
+            {isFree ? "Free" : formatMoney(pot.totalPot)}
           </p>
           <p className="mt-2 text-xs text-muted">
             {isFree
-              ? "No RMD wager — for practice or honor fights"
-              : `${formatRmd(wager)} per fighter · ${platformFeePercent}% platform fee`}
+              ? `No ${currencyCode} wager — for practice or honor fights`
+              : `${formatMoney(wager)} per fighter · ${platformFeePercent}% platform fee`}
           </p>
         </div>
 
@@ -80,12 +85,12 @@ export function FightSummaryCard({
             <div className="flex items-end justify-between">
               <p className="text-xs font-bold uppercase tracking-wider text-success">Winner Receives</p>
               <p className="text-2xl font-black text-success tabular-nums">
-                {formatRmd(pot.winnerPayout)}
+                {formatMoney(pot.winnerPayout)}
               </p>
             </div>
             <div className="flex items-center justify-between text-sm">
               <p className="text-muted">Platform Fee</p>
-              <p className="font-semibold text-muted tabular-nums">−{formatRmd(pot.platformFee)}</p>
+              <p className="font-semibold text-muted tabular-nums">−{formatMoney(pot.platformFee)}</p>
             </div>
           </div>
         )}
@@ -96,8 +101,8 @@ export function FightSummaryCard({
               "rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning",
             )}
           >
-            Wager exceeds available balance ({formatRmd(walletBalance)}). Deposit more RMD or
-            lower your stake.
+            Wager exceeds available balance ({formatMoney(walletBalance)}). Deposit more {currencyCode}{" "}
+            or lower your stake.
           </p>
         )}
 

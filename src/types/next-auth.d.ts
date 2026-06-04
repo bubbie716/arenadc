@@ -1,3 +1,4 @@
+import type { ServerId } from "@/lib/server-config";
 import "next-auth";
 import "next-auth/jwt";
 
@@ -6,6 +7,7 @@ declare module "next-auth" {
     user: {
       id: string;
       dbUserId: string;
+      serverId: ServerId;
       discordUsername: string;
       minecraftUsername: string | null;
       onboardingComplete: boolean;
@@ -21,6 +23,7 @@ declare module "next-auth/jwt" {
     discordId?: string;
     discordUsername?: string;
     dbUserId?: string;
+    serverId?: ServerId;
     onboardingComplete?: boolean;
     minecraftUsername?: string | null;
     isAdmin?: boolean;

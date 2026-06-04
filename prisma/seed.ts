@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { SERVER_IDS } from "../src/lib/server-config";
 
 const prisma = new PrismaClient();
 
@@ -11,12 +12,14 @@ const ARENAS = [
 ];
 
 async function main() {
-  for (const arena of ARENAS) {
-    await prisma.arena.upsert({
-      where: { slug: arena.slug },
-      create: arena,
-      update: { name: arena.name, description: arena.description, approved: true },
-    });
+  for (const serverId of SERVER_IDS) {
+    for (const arena of ARENAS) {
+      await prisma.arena.upsert({
+        where: { serverId_slug: { serverId, slug: arena.slug } },
+        create: { serverId, ...arena, approved: true },
+        update: { name: arena.name, description: arena.description, approved: true },
+      });
+    }
   }
 
   const adminDiscordId = process.env.ADMIN_DISCORD_ID;
@@ -27,7 +30,7 @@ async function main() {
     });
   }
 
-  console.log("Seed complete: arenas ready");
+  console.log("Seed complete: arenas ready for dc, sc, sw");
 }
 
 main()

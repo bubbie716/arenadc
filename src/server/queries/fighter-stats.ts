@@ -1,6 +1,7 @@
 import { FightStatus, WalletTransactionType } from "@prisma/client";
 import type { FighterStats } from "@/lib/types";
 import { prisma } from "@/lib/prisma";
+import { getScopedServerId } from "@/server/scope";
 
 const EMPTY_STATS: FighterStats = {
   record: { wins: 0, losses: 0 },
@@ -16,8 +17,10 @@ export async function getFighterStatsByUsername(
     return { ...EMPTY_STATS, totalWagered: 0 };
   }
 
+  const serverId = await getScopedServerId();
   const user = await prisma.user.findFirst({
     where: {
+      serverId,
       minecraftUsername: { equals: minecraftUsername, mode: "insensitive" },
     },
   });
@@ -28,6 +31,7 @@ export async function getFighterStatsByUsername(
 
   const completedFights = await prisma.fight.findMany({
     where: {
+      serverId,
       status: FightStatus.COMPLETED,
       winnerId: { not: null },
       OR: [{ playerAId: user.id }, { playerBId: user.id }],
@@ -63,6 +67,7 @@ export async function getFighterStatsByUsername(
   const [wageredAgg, earningsAgg] = await Promise.all([
     prisma.fight.aggregate({
       where: {
+        serverId,
         playerBId: { not: null },
         status: {
           notIn: [FightStatus.CANCELLED, FightStatus.DECLINED],
@@ -72,7 +77,7 @@ export async function getFighterStatsByUsername(
       _sum: { wagerAmount: true },
     }),
     prisma.walletTransaction.aggregate({
-      where: { userId: user.id, type: WalletTransactionType.PAYOUT },
+      where: { serverId, userId: user.id, type: WalletTransactionType.PAYOUT },
       _sum: { amount: true },
     }),
   ]);

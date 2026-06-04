@@ -5,7 +5,7 @@ import { MinecraftHead } from "@/components/MinecraftHead";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PlatformStats, Rivalry, TrendingFighter } from "@/lib/types";
-import { formatRmd } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
 import { cn } from "@/lib/utils";
 
 const PANELS = ["fighter", "rivalry", "stats"] as const;
@@ -22,6 +22,7 @@ export function HomeSidePanel({
   rivalry,
   platformStats,
 }: HomeSidePanelProps) {
+  const formatMoney = useFormatCurrency();
   const [active, setActive] = useState<Panel>(trendingFighter ? "fighter" : "stats");
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export function HomeSidePanel({
                   </div>
                   <div>
                     <p className="text-xs text-muted">Balance</p>
-                    <p className="font-bold">{formatRmd(trendingFighter.biggestWin, true)}</p>
+                    <p className="font-bold">{formatMoney(trendingFighter.biggestWin, { compact: true })}</p>
                   </div>
                 </div>
                 <Button href="/profile" variant="secondary" className="w-full">
@@ -130,12 +131,12 @@ export function HomeSidePanel({
                   { label: "Active Fighters", value: platformStats.activeFighters.toString() },
                   {
                     label: "RMD Wagered Today",
-                    value: formatRmd(platformStats.rmdWageredToday, true),
+                    value: formatMoney(platformStats.rmdWageredToday, { compact: true }),
                   },
                   { label: "Fights This Week", value: platformStats.fightsThisWeek.toString() },
                   {
                     label: "Largest Pot Today",
-                    value: formatRmd(platformStats.largestPotToday, true),
+                    value: formatMoney(platformStats.largestPotToday, { compact: true }),
                   },
                 ].map((stat) => (
                   <div

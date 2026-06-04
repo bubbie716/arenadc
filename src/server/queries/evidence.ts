@@ -1,12 +1,14 @@
 import { mapEvidenceSubmission } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
 import type { EvidenceSubmission } from "@/lib/types";
+import { getScopedServerId } from "@/server/scope";
 
 export async function getFightEvidenceSubmissions(
   fightId: string,
 ): Promise<EvidenceSubmission[]> {
+  const serverId = await getScopedServerId();
   const rows = await prisma.evidenceSubmission.findMany({
-    where: { fightId },
+    where: { serverId, fightId },
     include: { uploader: { select: { minecraftUsername: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -16,8 +18,9 @@ export async function getFightEvidenceSubmissions(
 export async function getLatestEvidenceByFighter(
   fightId: string,
 ): Promise<{ playerA: EvidenceSubmission | null; playerB: EvidenceSubmission | null }> {
-  const fight = await prisma.fight.findUnique({
-    where: { id: fightId },
+  const serverId = await getScopedServerId();
+  const fight = await prisma.fight.findFirst({
+    where: { id: fightId, serverId },
     select: { playerAId: true, playerBId: true },
   });
   if (!fight?.playerAId || !fight?.playerBId) {
@@ -25,7 +28,7 @@ export async function getLatestEvidenceByFighter(
   }
 
   const submissions = await prisma.evidenceSubmission.findMany({
-    where: { fightId },
+    where: { serverId, fightId },
     include: { uploader: { select: { minecraftUsername: true } } },
   });
 

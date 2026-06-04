@@ -1,6 +1,7 @@
 "use client";
 
-import { cn, formatRmd } from "@/lib/utils";
+import { useFormatCurrency } from "@/components/providers/ServerConfigProvider";
+import { cn } from "@/lib/utils";
 
 const PRESETS = [
   { label: "Free", value: 0 },
@@ -27,6 +28,7 @@ export function WagerChipSelector({
   onCustomModeChange,
   freeOnly = false,
 }: WagerChipSelectorProps) {
+  const formatMoney = useFormatCurrency();
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
@@ -74,7 +76,7 @@ export function WagerChipSelector({
         </button>
       </div>
       {customMode && value > 0 && (
-        <p className="text-xs text-muted">Custom wager: {formatRmd(value)}</p>
+        <p className="text-xs text-muted">Custom wager: {formatMoney(value)}</p>
       )}
     </div>
   );

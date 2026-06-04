@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRef, useState, useTransition } from "react";
 import { submitDepositRequest } from "@/actions/wallet";
 import { Button } from "@/components/ui/Button";
+import { useServerConfig } from "@/components/providers/ServerConfigProvider";
 import { PROOF_UPLOAD_MAX_MB, validateProofImageFile } from "@/lib/wallet/proof-upload";
 
 interface DepositRequestModalProps {
@@ -21,6 +22,7 @@ export function DepositRequestModal({
   onSuccess,
   onError,
 }: DepositRequestModalProps) {
+  const config = useServerConfig();
   const [pending, startTransition] = useTransition();
   const [amount, setAmount] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function DepositRequestModal({
   function handleSubmit() {
     const parsed = Math.floor(Number(amount));
     if (!Number.isFinite(parsed) || parsed < 100) {
-      onError("Enter a valid amount (minimum 100 RMD).");
+      onError(`Enter a valid amount (minimum 100 ${config.currencyCode}).`);
       return;
     }
     if (!file) {
@@ -110,14 +112,16 @@ export function DepositRequestModal({
       <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface-elevated p-6 shadow-2xl">
         <h2 className="text-xl font-bold">Request deposit</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Send the exact amount of in-game RMD to{" "}
+          Send the exact amount of in-game {config.currencyCode} to{" "}
           <span className="font-semibold text-foreground">{depositAccountName}</span>, then
           upload a screenshot showing the completed payment. Deposits are reviewed manually
           and are not credited until approved.
         </p>
 
         <label className="mt-6 block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">Amount (RMD)</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Amount ({config.currencyCode})
+          </span>
           <input
             type="number"
             min={100}
