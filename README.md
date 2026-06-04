@@ -65,15 +65,16 @@ Protected routes redirect to onboarding when incomplete.
 
 ## Multi-server (one deployment)
 
-ArenaMC runs as a single app on three subdomains:
+| Role | URL |
+|------|-----|
+| **Hub** (server selector) | `arenamc.xyz` |
+| DemocracyCraft arena | `dc.arenamc.xyz` — RMD ($) |
+| StateCraft arena | `sc.arenamc.xyz` — ALP (£) |
+| Stoneworks arena | `sw.arenamc.xyz` — SWC ($) |
 
-| Server | URL | Currency |
-|--------|-----|----------|
-| DemocracyCraft | `dc.arenamc.xyz` | RMD ($) |
-| StateCraft | `sc.arenamc.xyz` | ALP (£) |
-| Stoneworks | `sw.arenamc.xyz` | SWC ($) |
+The apex domain shows a premium hub landing page only. Arena routes (`/schedule`, `/wallet`, etc.) redirect to `/` on the hub.
 
-Local dev defaults to **dc** (`localhost`).
+Local dev: `localhost` loads the **dc** arena app. To preview the hub locally, map `arenamc.xyz` → `127.0.0.1` in `/etc/hosts` and open `http://arenamc.xyz:3000`.
 
 **Vercel:** Add wildcard domain `*.arenamc.xyz` (plus apex if needed) on the same project. Subdomain routing is handled in `src/middleware.ts` via `x-arenamc-server-id`.
 

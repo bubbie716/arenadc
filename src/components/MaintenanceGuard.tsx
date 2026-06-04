@@ -1,10 +1,17 @@
+import { headers } from "next/headers";
 import { getSessionUser } from "@/lib/auth/session";
+import { isHubHost } from "@/lib/host-mode";
 import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import { Navbar } from "@/components/Navbar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getDiscordInviteUrlFallback } from "@/lib/discord";
 
 export async function MaintenanceGuard({ children }: { children: React.ReactNode }) {
+  const host = (await headers()).get("host") ?? "";
+  if (isHubHost(host)) {
+    return children;
+  }
+
   const [user, platformSettings] = await Promise.all([
     getSessionUser(),
     getResolvedPlatformSettings(),

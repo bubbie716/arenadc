@@ -2,6 +2,11 @@ import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
+  ARENA_ONLY_PREFIXES,
+  HUB_HOST_MODE_HEADER,
+  isHubHost,
+} from "@/lib/host-mode";
+import {
   resolveServerIdFromHost,
   type ServerId,
 } from "@/lib/server-config";
@@ -29,9 +34,31 @@ function applyServerContext(res: NextResponse, serverId: ServerId) {
   return res;
 }
 
+function applyHubContext(res: NextResponse) {
+  res.headers.set(HUB_HOST_MODE_HEADER, "hub");
+  return res;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const host = req.headers.get("host") ?? "";
+
+  if (isHubHost(host)) {
+    const isArenaRoute = ARENA_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (isArenaRoute) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return applyHubContext(NextResponse.redirect(url));
+    }
+
+    if (pathname.startsWith("/api/auth")) {
+      return applyHubContext(NextResponse.next());
+    }
+
+    return applyHubContext(NextResponse.next());
+  }
+
   const serverId = resolveServerIdFromHost(host);
 
   const token = await getToken({

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { MaintenanceGuard } from "@/components/MaintenanceGuard";
 import { ServerConfigProvider } from "@/components/providers/ServerConfigProvider";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { headers } from "next/headers";
+import { isHubHost } from "@/lib/host-mode";
 import { getActiveServerConfig } from "@/lib/server-context";
 import "./globals.css";
 
@@ -17,6 +19,19 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
+  const host = (await headers()).get("host") ?? "";
+  if (isHubHost(host)) {
+    return {
+      title: "ArenaMC — Competitive PvP Infrastructure",
+      description:
+        "Schedule fights, settle rivalries, track records, and prove who's better. Select your Minecraft server arena.",
+      icons: {
+        icon: [{ url: "/arenamc-icon-128.png", sizes: "128x128", type: "image/png" }],
+        apple: [{ url: "/arenamc-icon-512.png", sizes: "512x512", type: "image/png" }],
+      },
+    };
+  }
+
   const config = await getActiveServerConfig();
   return {
     title: `ArenaMC — ${config.legalServerName} PvP Wagers`,
