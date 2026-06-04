@@ -53,10 +53,11 @@ export type HubServerCard = {
   arenaLabel: string;
   currencyCode: string;
   href: string;
+  activeUsers: number;
   features: readonly [string, string, string];
 };
 
-export function getHubServerCards(): HubServerCard[] {
+export function getHubServerCards(activeUsersByServer: Record<ServerId, number>): HubServerCard[] {
   return SERVER_IDS.map((id) => {
     const config = getServerConfig(id);
     return {
@@ -65,6 +66,7 @@ export function getHubServerCards(): HubServerCard[] {
       arenaLabel: config.arenaBrandName,
       currencyCode: config.currencyCode,
       href: getArenaOrigin(id),
+      activeUsers: activeUsersByServer[id] ?? 0,
       features: [
         `${config.currencyCode} Economy`,
         "PvP Challenges",
