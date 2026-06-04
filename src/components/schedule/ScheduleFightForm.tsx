@@ -23,6 +23,10 @@ import {
   validateFightLocationParts,
 } from "@/lib/fight-location";
 import type { FormatId, RulesetId } from "@/lib/types";
+import {
+  isLocalDateTimeInFuture,
+  localDateTimeInputToIso,
+} from "@/lib/schedule-datetime";
 import { defaultScheduleDateTimeLocal } from "@/lib/utils";
 
 type OpponentStatus = "idle" | "checking" | "valid" | "not_registered" | "self";
@@ -161,12 +165,19 @@ export function ScheduleFightForm({
     "w-full min-w-0 rounded-lg border border-border bg-surface-elevated px-2.5 py-2 text-sm text-foreground transition-all duration-200 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 hover:border-accent/30";
 
   function submitCreate() {
+    const scheduledAtIso = localDateTimeInputToIso(scheduledAt);
+    if (!scheduledAtIso || !isLocalDateTimeInFuture(scheduledAt)) {
+      setPrepModalOpen(false);
+      setError("Schedule a future date and time.");
+      return;
+    }
+
     startTransition(async () => {
       setError(null);
       const res = await createFight({
         opponentMcName: validatedOpponent ?? opponent,
         isOpenChallenge: openChallenge,
-        scheduledAt,
+        scheduledAt: scheduledAtIso,
         ruleset,
         format,
         fightLocation: fightLocationValue,

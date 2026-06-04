@@ -2,6 +2,7 @@
 
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useRef } from "react";
+import { toAbsoluteCallbackUrl } from "@/lib/auth/callback-url";
 
 /**
  * After a DB reset the JWT may still reference a deleted user. The server clears
@@ -19,7 +20,7 @@ export function StaleSessionGuard() {
 
     if (hasSessionShell && !hasDbUser) {
       signingOut.current = true;
-      void signOut({ callbackUrl: "/onboarding" });
+      void signOut({ callbackUrl: toAbsoluteCallbackUrl("/onboarding") });
     }
   }, [session, status]);
 

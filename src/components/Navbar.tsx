@@ -6,6 +6,7 @@ import { signIn, useSession } from "next-auth/react";
 import { ArenaMCLogo } from "@/components/ArenaMCLogo";
 import { AccountMenu } from "@/components/AccountMenu";
 import { NotificationBell } from "@/components/NotificationBell";
+import { toAbsoluteCallbackUrl } from "@/lib/auth/callback-url";
 import { cn } from "@/lib/utils";
 
 const baseNavLinks = [
@@ -31,7 +32,7 @@ export function Navbar() {
   function handleScheduleClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (!session?.user?.dbUserId) {
       e.preventDefault();
-      signIn("discord", { callbackUrl: "/schedule" });
+      signIn("discord", { callbackUrl: toAbsoluteCallbackUrl("/schedule") });
     }
   }
 

@@ -84,6 +84,23 @@ async function syncTokenFromDbUserId(token: JWT): Promise<JWT> {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+
+      try {
+        const target = new URL(url);
+        const base = new URL(baseUrl);
+        if (target.origin === base.origin) {
+          return url;
+        }
+      } catch {
+        // ignore malformed url
+      }
+
+      return baseUrl;
+    },
     async signIn({ profile }) {
       if (!profile) return false;
       const serverId = await getAuthServerId();

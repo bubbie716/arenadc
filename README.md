@@ -21,8 +21,15 @@ cp .env.example .env
    - `DATABASE_URL` — Neon PostgreSQL connection string
    - `AUTH_SECRET` — `openssl rand -base64 32`
    - `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` — [Discord Developer Portal](https://discord.com/developers/applications)
-   - Redirect URL: `http://localhost:3000/api/auth/callback/discord`
    - `BLOB_READ_WRITE_TOKEN` — required on Vercel for deposit proof uploads ([Vercel Blob](https://vercel.com/docs/storage/vercel-blob); local dev uses `public/uploads/` when unset)
+
+   **Do not set a single `AUTH_URL` or `NEXTAUTH_URL` in production** (it forces all OAuth callbacks to one domain). Auth uses the request host per subdomain (`trustHost` + dynamic origin in `/api/auth`).
+
+   **Discord OAuth redirect URIs** (add every arena host you use):
+   - `http://localhost:3000/api/auth/callback/discord`
+   - `https://dc.arenamc.xyz/api/auth/callback/discord`
+   - `https://sc.arenamc.xyz/api/auth/callback/discord`
+   - `https://sw.arenamc.xyz/api/auth/callback/discord`
 
 3. Push schema and seed arenas:
 
@@ -39,6 +46,8 @@ npm run dev
 ```
 
 ## Auth & onboarding
+
+Discord login returns to the **same subdomain** you started on (`dc` / `sc` / `sw`). Sessions are host-scoped (separate cookies per subdomain).
 
 1. Sign in with Discord at `/onboarding`
 2. Link Minecraft username (unique per account)

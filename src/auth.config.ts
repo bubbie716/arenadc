@@ -3,6 +3,7 @@ import Discord from "next-auth/providers/discord";
 import type { DiscordProfile } from "next-auth/providers/discord";
 
 export const authConfig = {
+  /** Use request Host / X-Forwarded-Host instead of a single AUTH_URL. */
   trustHost: true,
   providers: [
     Discord({

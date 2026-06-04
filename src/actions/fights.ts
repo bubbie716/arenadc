@@ -24,6 +24,7 @@ import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { payoutFightWinner, refundFightEscrow } from "@/server/fight-payout";
 import { syncPastScheduledFights, tryFinalizeFightFromResults } from "@/server/fight-status";
 import { normalizeFightLocation, validateFightLocation } from "@/lib/fight-location";
+import { parseScheduledAtInput } from "@/lib/schedule-datetime";
 import { getDefaultArena } from "@/server/arenas";
 import { getScopedServerId } from "@/server/scope";
 import type { FormatId, RulesetId } from "@/lib/types";
@@ -66,8 +67,8 @@ export async function createFight(input: {
       };
     }
 
-    const scheduledAt = new Date(input.scheduledAt);
-    if (Number.isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) {
+    const scheduledAt = parseScheduledAtInput(input.scheduledAt);
+    if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
       return { ok: false, error: "Schedule a future date and time." };
     }
 

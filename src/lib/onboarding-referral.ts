@@ -1,3 +1,4 @@
+import { toAbsoluteCallbackUrl } from "@/lib/auth/callback-url";
 import { formatReferralCodeInput } from "@/lib/referral-code";
 
 export const ONBOARDING_REF_STORAGE_KEY = "arenamc-onboarding-ref";
@@ -41,5 +42,5 @@ export function buildOnboardingDiscordCallbackUrl(options: {
     params.set("callbackUrl", callbackUrl);
   }
 
-  return `/onboarding?${params.toString()}`;
+  return toAbsoluteCallbackUrl(`/onboarding?${params.toString()}`);
 }

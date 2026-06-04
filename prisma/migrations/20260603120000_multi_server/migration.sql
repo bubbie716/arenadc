@@ -5,6 +5,9 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "serverId" TEXT NOT NULL DEFAULT 'dc
 ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "User_discordId_key";
 ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "User_minecraftUsername_key";
 ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "User_referralCode_key";
+DROP INDEX IF EXISTS "User_discordId_key";
+DROP INDEX IF EXISTS "User_minecraftUsername_key";
+DROP INDEX IF EXISTS "User_referralCode_key";
 CREATE UNIQUE INDEX IF NOT EXISTS "User_serverId_discordId_key" ON "User"("serverId", "discordId");
 CREATE UNIQUE INDEX IF NOT EXISTS "User_serverId_minecraftUsername_key" ON "User"("serverId", "minecraftUsername");
 CREATE UNIQUE INDEX IF NOT EXISTS "User_serverId_referralCode_key" ON "User"("serverId", "referralCode");

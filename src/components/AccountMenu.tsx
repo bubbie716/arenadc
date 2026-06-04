@@ -2,6 +2,7 @@
 
 import { signIn, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
+import { toAbsoluteCallbackUrl } from "@/lib/auth/callback-url";
 import { cn } from "@/lib/utils";
 
 export function AccountMenu() {
@@ -29,7 +30,7 @@ export function AccountMenu() {
         </Link>
         <button
           type="button"
-          onClick={() => signOut({ callbackUrl: "/" })}
+          onClick={() => signOut({ callbackUrl: toAbsoluteCallbackUrl("/") })}
           className="cursor-pointer rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:text-foreground"
         >
           Sign out
@@ -41,7 +42,7 @@ export function AccountMenu() {
   return (
     <button
       type="button"
-      onClick={() => signIn("discord", { callbackUrl: "/onboarding" })}
+      onClick={() => signIn("discord", { callbackUrl: toAbsoluteCallbackUrl("/onboarding") })}
       className="cursor-pointer rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:text-foreground"
     >
       Sign in

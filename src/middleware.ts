@@ -61,6 +61,10 @@ export async function middleware(req: NextRequest) {
 
   const serverId = resolveServerIdFromHost(host);
 
+  if (pathname.startsWith("/api/auth")) {
+    return applyServerContext(NextResponse.next(), serverId);
+  }
+
   const token = await getToken({
     req,
     secret: authSecret(),
@@ -80,10 +84,6 @@ export async function middleware(req: NextRequest) {
   }
 
   const isLoggedIn = Boolean(token?.dbUserId);
-
-  if (pathname.startsWith("/api/auth")) {
-    return applyServerContext(NextResponse.next(), serverId);
-  }
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
 
