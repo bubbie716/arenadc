@@ -72,7 +72,9 @@ export async function createFight(input: {
       return { ok: false, error: "Schedule a future date and time." };
     }
 
-    const locationError = validateFightLocation(input.fightLocation);
+    const locationError = validateFightLocation(input.fightLocation, {
+      requireDcRegion: serverId === "dc",
+    });
     if (locationError) {
       return { ok: false, error: locationError };
     }
