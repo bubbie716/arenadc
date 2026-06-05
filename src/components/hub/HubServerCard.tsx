@@ -14,7 +14,7 @@ export function HubServerCard({ server, className }: HubServerCardProps) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface",
+        "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface",
         "card-interactive hover:border-accent/35 hover:shadow-[0_20px_50px_-20px_rgba(124,92,255,0.35)]",
         className,
       )}
@@ -51,7 +51,7 @@ export function HubServerCard({ server, className }: HubServerCardProps) {
           href={server.href}
           onClick={() => writeLastHubServer(server.id)}
           className={cn(
-            "mt-8 inline-flex w-full items-center justify-center rounded-xl px-4 py-3",
+            "mt-auto inline-flex w-full items-center justify-center rounded-xl px-4 py-3 pt-8",
             "text-sm font-semibold transition-all duration-200",
             "bg-accent text-white hover:bg-accent-hover",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface",

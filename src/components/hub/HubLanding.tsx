@@ -68,14 +68,16 @@ export function HubLanding({ servers }: HubLandingProps) {
             <p className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.25em] text-muted">
               Select your server
             </p>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 lg:gap-6">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
               {servers.map((server, index) => (
                 <HubServerCard
                   key={server.id}
                   server={server}
                   className={cn(
                     "animate-slide-up",
-                    index === 1 && "sm:mt-4 lg:mt-6",
+                    index === servers.length - 1 &&
+                      servers.length % 3 !== 0 &&
+                      "sm:col-span-2 sm:max-w-md sm:justify-self-center lg:col-span-1 lg:col-start-2 lg:max-w-none",
                   )}
                 />
               ))}
