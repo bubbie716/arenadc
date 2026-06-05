@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import {
   DEFAULT_SERVER_ID,
   getServerConfig,
+  isServerId,
   resolveServerIdForRequest,
   resolveServerIdFromHost,
   type ServerConfig,
@@ -28,7 +29,7 @@ export async function getServerId(): Promise<ServerId> {
 }
 
 function isServerIdHeader(value: string): value is ServerId {
-  return value === "dc" || value === "sc" || value === "sw";
+  return isServerId(value);
 }
 
 export async function getActiveServerConfig(): Promise<ServerConfig> {

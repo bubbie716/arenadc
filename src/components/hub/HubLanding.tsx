@@ -68,7 +68,7 @@ export function HubLanding({ servers }: HubLandingProps) {
             <p className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.25em] text-muted">
               Select your server
             </p>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 lg:gap-6">
               {servers.map((server, index) => (
                 <HubServerCard
                   key={server.id}

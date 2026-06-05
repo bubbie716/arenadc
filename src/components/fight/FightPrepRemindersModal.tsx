@@ -216,7 +216,7 @@ export function FightPrepRemindersModal({
                 <section className="mt-6 rounded-xl border border-blue/25 bg-blue/5 p-4">
                   <p className="text-sm font-bold text-foreground">You must record your POV</p>
                   <p className="mt-1 text-sm leading-relaxed text-muted">
-                    {config.rulesetKind === "openworld" ? (
+                    {config.rulesetKind !== "government" ? (
                       <>
                         POV is required for wagered fights when disputes, result disagreements, or
                         admin review occur. Submit POV links within{" "}

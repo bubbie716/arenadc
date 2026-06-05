@@ -1,7 +1,7 @@
-export type ServerId = "dc" | "sc" | "sw";
+export type ServerId = "dc" | "sc" | "sw" | "crp";
 
-/** Government-style consent rules (DC, SC). Open-world competitive rules (SW). */
-export type RulesetKind = "government" | "openworld";
+/** Government-style consent rules (DC, SC). Government without /police consent (CRP). Open-world (SW). */
+export type RulesetKind = "government" | "government_no_police" | "openworld";
 
 export type ServerConfig = {
   id: ServerId;
@@ -63,6 +63,20 @@ export const SERVER_CONFIG: Record<ServerId, ServerConfig> = {
     legalServerName: "Stoneworks",
     rulesetKind: "openworld",
     fightIdPrefix: "ArenaSW",
+  },
+  crp: {
+    id: "crp",
+    code: "crp",
+    name: "CityRP",
+    currencyCode: "CRP",
+    currencyName: "CityRP Dollars",
+    currencySymbol: "$",
+    subdomain: "crp",
+    arenaBrandName: "ArenaCRP",
+    depositAccountName: "ArenaCRP",
+    legalServerName: "CityRP",
+    rulesetKind: "government_no_police",
+    fightIdPrefix: "ArenaCRP",
   },
 };
 
@@ -126,4 +140,8 @@ export function resolveServerIdForRequest(options: {
 
 export function getServerConfig(serverId: ServerId = DEFAULT_SERVER_ID): ServerConfig {
   return SERVER_CONFIG[serverId];
+}
+
+export function requiresPoliceConsent(config: ServerConfig): boolean {
+  return config.rulesetKind === "government";
 }

@@ -105,9 +105,8 @@ export function fightPrepIntro(
 
 export function getFightPrepSteps(config: ServerConfig, isFreeFight: boolean): FightPrepStep[] {
   if (isFreeFight) return [...FREE_FIGHT_PREP_STEPS];
-  return config.rulesetKind === "openworld"
-    ? openworldPreFightSteps()
-    : [...GOVERNMENT_PRE_FIGHT_STEPS];
+  if (config.rulesetKind === "government") return [...GOVERNMENT_PRE_FIGHT_STEPS];
+  return openworldPreFightSteps();
 }
 
 export function getFightPrepReminders(config: ServerConfig, isFreeFight: boolean): string[] {

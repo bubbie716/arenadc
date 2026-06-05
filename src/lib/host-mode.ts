@@ -1,4 +1,4 @@
-import { getServerConfig, SERVER_IDS, type ServerId } from "@/lib/server-config";
+import { getServerConfig, isServerId, SERVER_IDS, type ServerId } from "@/lib/server-config";
 
 export const HUB_HOST_MODE_HEADER = "x-arenamc-host-mode";
 
@@ -20,7 +20,7 @@ export function isArenaSubdomainHost(host: string): boolean {
     return true;
   }
   const sub = hostname.split(".")[0];
-  return sub === "dc" || sub === "sc" || sub === "sw";
+  return Boolean(sub && isServerId(sub));
 }
 
 /** Arena app routes that must not run on the hub apex domain. */

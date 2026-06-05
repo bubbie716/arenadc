@@ -2,6 +2,7 @@ import { ESCROW_POLICY_SECTIONS } from "@/lib/legal/escrow-policy-sections";
 import { FIGHT_RULES_SECTIONS } from "@/lib/legal/fight-rules-sections";
 import type { LegalSection } from "@/lib/legal/types";
 import type { ServerConfig } from "@/lib/server-config";
+import { buildGovernmentNoPoliceFightRulesSections } from "@/lib/server-rules/government-no-police-rules";
 import { buildOpenworldEscrowPolicySections } from "@/lib/server-rules/openworld-escrow-policy";
 import { buildOpenworldFightRulesSections } from "@/lib/server-rules/openworld-fight-rules";
 
@@ -16,15 +17,16 @@ export const FIGHT_ESCROW_TABS: { id: FightEscrowTab; label: string }[] = [
 ];
 
 export function getFightRulesSections(config: ServerConfig): LegalSection[] {
-  return config.rulesetKind === "openworld"
-    ? buildOpenworldFightRulesSections(config)
-    : FIGHT_RULES_SECTIONS;
+  if (config.rulesetKind === "openworld") return buildOpenworldFightRulesSections(config);
+  if (config.rulesetKind === "government_no_police") {
+    return buildGovernmentNoPoliceFightRulesSections(config);
+  }
+  return FIGHT_RULES_SECTIONS;
 }
 
 export function getEscrowPolicySections(config: ServerConfig): LegalSection[] {
-  return config.rulesetKind === "openworld"
-    ? buildOpenworldEscrowPolicySections()
-    : ESCROW_POLICY_SECTIONS;
+  if (config.rulesetKind === "government") return ESCROW_POLICY_SECTIONS;
+  return buildOpenworldEscrowPolicySections();
 }
 
 export function getFightRulesTabContent(config: ServerConfig) {

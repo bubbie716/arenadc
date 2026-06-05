@@ -39,7 +39,7 @@ async function main() {
     });
   }
 
-  console.log("Seed complete: arenas ready for dc, sc, sw");
+  console.log(`Seed complete: arenas ready for ${SERVER_IDS.join(", ")}`);
 }
 
 main()
