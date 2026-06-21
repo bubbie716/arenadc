@@ -22,7 +22,11 @@ export const AdminAuditAction = {
   USER_BALANCE_ADJUSTMENT: "user.balance_adjustment",
   USER_NOTIFICATIONS_MUTED: "user.notifications_muted",
   USER_NOTIFICATIONS_UNMUTED: "user.notifications_unmuted",
+  USER_MINECRAFT_USERNAME_CHANGED: "user.minecraft_username_changed",
   SETTINGS_UPDATED: "settings.updated",
+  SPECTATOR_POOL_LOCKED: "spectator_pool.locked",
+  SPECTATOR_POOL_REFUNDED: "spectator_pool.refunded",
+  SPECTATOR_POOL_SETTLED: "spectator_pool.settled",
 } as const;
 
 export type AdminAuditActionType =

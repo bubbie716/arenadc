@@ -44,6 +44,26 @@ enum WalletTransactionType {
   REFERRAL_BONUS
   WITHDRAW
   FEE
+  SPECTATOR_BET_LOCK
+  SPECTATOR_BET_PAYOUT
+  SPECTATOR_BET_REFUND
+  SPECTATOR_POOL_FEE
+}
+
+enum SpectatorBetStatus {
+  PENDING
+  WON
+  LOST
+  REFUNDED
+  CANCELLED
+}
+
+enum SpectatorBettingStatus {
+  CLOSED
+  OPEN
+  LOCKED
+  SETTLED
+  REFUNDED
 }
 
 enum DepositRequestStatus {
@@ -100,6 +120,9 @@ enum NotificationType {
   ACCOUNT_UNSUSPENDED
   REFERRAL_BONUS_RECEIVED
   REFERRAL_BONUS_EARNED
+  SPECTATOR_BET_WON
+  SPECTATOR_BET_LOST
+  SPECTATOR_BET_REFUNDED
 }
 
 model User {
@@ -136,6 +159,7 @@ model User {
   evidenceReviews     EvidenceSubmission[] @relation("EvidenceReviewer")
   notifications       Notification[]
   communityVotes      FightCommunityVote[]
+  spectatorBets       SpectatorBet[]
   referralsMade       ReferralRedemption[] @relation("ReferralReferrer")
   referralReceived    ReferralRedemption?  @relation("ReferralReferred")
 
@@ -196,6 +220,8 @@ model Fight {
   winnerId        String?
   completedAt     DateTime?
   round           Int?
+  earlyStartPlayerAAt DateTime?
+  earlyStartPlayerBAt DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -205,6 +231,13 @@ model Fight {
   evidenceSubmissions EvidenceSubmission[]
   notifications       Notification[]
   communityVotes      FightCommunityVote[]
+  spectatorBets       SpectatorBet[]
+
+  spectatorBettingEnabled   Boolean               @default(false)
+  spectatorBettingClosesAt    DateTime?
+  spectatorPoolFeePercent     Float                 @default(0.08)
+  spectatorPoolsSettledAt     DateTime?
+  spectatorBettingStatus      SpectatorBettingStatus @default(CLOSED)
 
   @@unique([serverId, fightNumber])
   @@index([serverId])
@@ -364,6 +397,26 @@ model FightCommunityVote {
 
   @@unique([fightId, userId])
   @@index([fightId])
+}
+
+model SpectatorBet {
+  id                String             @id @default(cuid())
+  serverId          String
+  fightId           String
+  fight             Fight              @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User               @relation(fields: [userId], references: [id])
+  selectedFighterId String
+  amount            Int
+  status            SpectatorBetStatus @default(PENDING)
+  payoutAmount      Int?
+  createdAt         DateTime           @default(now())
+  settledAt         DateTime?
+
+  @@index([serverId])
+  @@index([fightId])
+  @@index([userId])
+  @@index([fightId, status])
 }
 
 model Notification {

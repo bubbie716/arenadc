@@ -38,7 +38,7 @@ export function FightTimeline({ fight }: FightTimelineProps) {
       break;
     case "in_progress":
       headline = "Fight in progress";
-      detail = "Awaiting fighter confirmation";
+      detail = "Both fighters agreed to start — report your result when finished";
       break;
     case "awaiting_result":
       headline = "Awaiting result";

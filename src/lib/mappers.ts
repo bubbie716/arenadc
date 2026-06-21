@@ -165,6 +165,9 @@ const NOTIFICATION_TYPE_MAP: Record<DbNotificationType, NotificationType> = {
   ACCOUNT_UNSUSPENDED: "account_unsuspended",
   REFERRAL_BONUS_RECEIVED: "referral_bonus_received",
   REFERRAL_BONUS_EARNED: "referral_bonus_earned",
+  SPECTATOR_BET_WON: "spectator_bet_won",
+  SPECTATOR_BET_LOST: "spectator_bet_lost",
+  SPECTATOR_BET_REFUNDED: "spectator_bet_refunded",
 };
 
 export function mapNotification(row: {

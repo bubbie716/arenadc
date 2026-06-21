@@ -111,6 +111,10 @@ function mapWalletTxType(type: WalletTransactionType): Transaction["type"] {
     FEE: "platform_fee",
     PLATFORM_FEE: "platform_fee",
     REFUND: "refund",
+    SPECTATOR_BET_LOCK: "escrow",
+    SPECTATOR_BET_PAYOUT: "payout",
+    SPECTATOR_BET_REFUND: "refund",
+    SPECTATOR_POOL_FEE: "platform_fee",
     ADMIN_ADJUSTMENT: "admin_adjustment",
     REFERRAL_BONUS: "referral_bonus",
   };

@@ -11,6 +11,8 @@ import { getResolvedPlatformSettings } from "@/server/platform-settings";
 import { prisma } from "@/lib/prisma";
 import {
   ACCEPTABLE_FIGHT_STATUSES,
+  EARLY_STARTABLE_FIGHT_STATUSES,
+  fightHasStartedForReporting,
   REPORTABLE_FIGHT_STATUSES,
 } from "@/lib/fight-statuses";
 import {
@@ -25,6 +27,7 @@ import { payoutFightWinner, refundFightEscrow } from "@/server/fight-payout";
 import { syncPastScheduledFights, tryFinalizeFightFromResults } from "@/server/fight-status";
 import { normalizeFightLocation, validateFightLocation } from "@/lib/fight-location";
 import { parseScheduledAtInput } from "@/lib/schedule-datetime";
+import { enableSpectatorBettingForFight, lockSpectatorBettingMarket } from "@/server/spectator-betting";
 import { getDefaultArena } from "@/server/arenas";
 import { getScopedServerId } from "@/server/scope";
 import type { FormatId, RulesetId } from "@/lib/types";
@@ -281,6 +284,8 @@ export async function acceptFight(fightId: string): Promise<ActionResult> {
           opponentMcName: user.minecraftUsername,
         },
       });
+
+      await enableSpectatorBettingForFight(tx, fightId, fight.scheduledAt);
     });
 
     await notifyFightAccepted({
@@ -346,6 +351,85 @@ export async function declineFight(fightId: string): Promise<ActionResult> {
   }
 }
 
+export async function agreeToStartFightEarly(fightId: string): Promise<ActionResult> {
+  try {
+    const user = await requireOnboardedUser();
+    const serverId = await getScopedServerId();
+
+    const fight = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
+      select: {
+        id: true,
+        status: true,
+        scheduledAt: true,
+        playerAId: true,
+        playerBId: true,
+        earlyStartPlayerAAt: true,
+        earlyStartPlayerBAt: true,
+      },
+    });
+
+    if (!fight) return { ok: false, error: "Fight not found." };
+    if (fight.playerAId !== user.id && fight.playerBId !== user.id) {
+      return { ok: false, error: "Only fighters can agree to start early." };
+    }
+    if (!fight.playerAId || !fight.playerBId) {
+      return { ok: false, error: "Both fighters must be set." };
+    }
+    if (!EARLY_STARTABLE_FIGHT_STATUSES.includes(fight.status)) {
+      return { ok: false, error: "This fight cannot be started early." };
+    }
+    if (fight.scheduledAt.getTime() <= Date.now()) {
+      return {
+        ok: false,
+        error: "This fight is already at or past its scheduled start time.",
+      };
+    }
+
+    const isPlayerA = user.id === fight.playerAId;
+    const alreadyAgreed = isPlayerA ? fight.earlyStartPlayerAAt : fight.earlyStartPlayerBAt;
+    if (alreadyAgreed) {
+      return { ok: false, error: "You have already agreed to start early." };
+    }
+
+    const now = new Date();
+    let bothAgreed = false;
+
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.fight.update({
+        where: { id: fightId },
+        data: isPlayerA ? { earlyStartPlayerAAt: now } : { earlyStartPlayerBAt: now },
+      });
+
+      if (
+        updated.earlyStartPlayerAAt &&
+        updated.earlyStartPlayerBAt &&
+        EARLY_STARTABLE_FIGHT_STATUSES.includes(updated.status)
+      ) {
+        await tx.fight.update({
+          where: { id: fightId },
+          data: { status: FightStatus.IN_PROGRESS },
+        });
+        bothAgreed = true;
+      }
+    });
+
+    if (bothAgreed) {
+      await lockSpectatorBettingMarket(fightId);
+    }
+
+    revalidatePath(`/fights/${fightId}`);
+    revalidatePath("/");
+    revalidatePath("/schedule");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Error && (e.message === "UNAUTHORIZED" || e.message === "ONBOARDING_REQUIRED")) {
+      return { ok: false, error: "Sign in and complete onboarding." };
+    }
+    return { ok: false, error: "Could not record early start agreement." };
+  }
+}
+
 export async function reportFightResult(
   fightId: string,
   result: "won" | "lost" | "dispute",
@@ -364,8 +448,20 @@ export async function reportFightResult(
 
     await syncPastScheduledFights();
 
-    if (!REPORTABLE_FIGHT_STATUSES.includes(fight.status)) {
+    const refreshed = await prisma.fight.findFirst({
+      where: { id: fightId, serverId },
+    });
+    if (!refreshed) return { ok: false, error: "Fight not found." };
+
+    if (!REPORTABLE_FIGHT_STATUSES.includes(refreshed.status)) {
       return { ok: false, error: "This fight cannot accept result reports." };
+    }
+
+    if (!fightHasStartedForReporting(refreshed)) {
+      return {
+        ok: false,
+        error: "This fight has not started yet. Both fighters must agree to start early.",
+      };
     }
 
     const typeMap: Record<typeof result, FightResultType> = {
@@ -423,9 +519,14 @@ export async function reportFightResult(
       if (finalize?.shouldPayout && finalize.winnerId) {
         await payoutFightWinner(fightId, finalize.winnerId);
       } else {
+        const stillBeforeSchedule = refreshed.scheduledAt.getTime() > Date.now();
         await prisma.fight.update({
           where: { id: fightId },
-          data: { status: FightStatus.AWAITING_RESULT },
+          data: {
+            status: stillBeforeSchedule
+              ? FightStatus.IN_PROGRESS
+              : FightStatus.AWAITING_RESULT,
+          },
         });
       }
     }

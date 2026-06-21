@@ -1,10 +1,12 @@
 import { FightResultType, FightStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getScopedServerId } from "@/server/scope";
+import { syncSpectatorBettingMarkets } from "@/server/spectator-betting";
 
 /** Move accepted fights past their scheduled time into awaiting-result state. */
 export async function syncPastScheduledFights() {
   const serverId = await getScopedServerId();
+  await syncSpectatorBettingMarkets(serverId);
   const now = new Date();
   await prisma.fight.updateMany({
     where: {
@@ -65,7 +67,7 @@ export async function tryFinalizeFightFromResults(fightId: string) {
       const nextStatus =
         fight.scheduledAt <= new Date()
           ? FightStatus.AWAITING_RESULT
-          : FightStatus.SCHEDULED;
+          : FightStatus.IN_PROGRESS;
       if (fight.status !== nextStatus) {
         await prisma.fight.update({
           where: { id: fightId },

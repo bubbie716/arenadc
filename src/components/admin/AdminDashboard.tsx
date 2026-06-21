@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { adminFightAction } from "@/actions/admin/fights";
+import {
+  adminLockSpectatorPool,
+  adminRefundSpectatorPool,
+  adminSettleSpectatorPool,
+} from "@/actions/admin/spectator-bets";
 import { adminResolveDispute, adminReviewEvidence } from "@/actions/admin/disputes";
 import { adminUpdatePlatformSettings } from "@/actions/admin/settings";
 import {
@@ -14,6 +19,7 @@ import {
 } from "@/actions/admin/wallet";
 import {
   adminAdjustUserBalance,
+  adminSetMinecraftUsername,
   adminSetNotificationsMuted,
   adminSetUserAdmin,
   adminSetUserSuspended,
@@ -258,6 +264,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
               "Fighters",
               "Wager",
               "Pot / Fee / Payout",
+              "Prediction Pool",
               "Kit",
               "Arena",
               "Scheduled",
@@ -278,6 +285,19 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                   <div>{formatMoney(fight.totalPot)} pot</div>
                   <div>{formatMoney(fight.platformFee)} fee</div>
                   <div className="text-foreground">{formatMoney(fight.winnerPayout)} payout</div>
+                </td>
+                <td className="px-4 py-3 text-xs text-muted">
+                  {fight.spectatorBettingEnabled ? (
+                    <>
+                      <div>{formatMoney(fight.spectatorPoolTotal)} total</div>
+                      <div>
+                        {formatMoney(fight.spectatorPoolA)} / {formatMoney(fight.spectatorPoolB)}
+                      </div>
+                      <div>{fight.spectatorBetCount} bets · {fight.spectatorBettingStatus}</div>
+                    </>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-4 py-3 text-xs">{getRulesetLabel(fight.ruleset as RulesetId)}</td>
                 <td className="px-4 py-3 text-xs">{fight.arenaName}</td>
@@ -350,6 +370,44 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                         })
                       }
                     />
+                    {fight.spectatorBettingEnabled && (
+                      <>
+                        <AdminActionItem
+                          label="Lock prediction pool"
+                          onClick={() =>
+                            openConfirm({
+                              title: "Lock prediction pool",
+                              description: fight.displayId,
+                              onConfirm: (note) =>
+                                runAction(() => adminLockSpectatorPool(fight.id, note)),
+                            })
+                          }
+                        />
+                        <AdminActionItem
+                          label="Refund prediction pool"
+                          danger
+                          onClick={() =>
+                            openConfirm({
+                              title: "Refund prediction pool",
+                              description: fight.displayId,
+                              onConfirm: (note) =>
+                                runAction(() => adminRefundSpectatorPool(fight.id, note)),
+                            })
+                          }
+                        />
+                        <AdminActionItem
+                          label="Settle prediction pool"
+                          onClick={() =>
+                            openConfirm({
+                              title: "Settle prediction pool",
+                              description: fight.displayId,
+                              onConfirm: (note) =>
+                                runAction(() => adminSettleSpectatorPool(fight.id, note)),
+                            })
+                          }
+                        />
+                      </>
+                    )}
                   </AdminActionsDropdown>
                 </td>
               </tr>
@@ -587,6 +645,11 @@ function UsersTab({
   const [detailId, setDetailId] = useState<string | null>(null);
   const detail = detailId ? users.find((u) => u.id === detailId) : null;
   const [adjustAmount, setAdjustAmount] = useState("");
+  const [minecraftUsername, setMinecraftUsername] = useState("");
+
+  useEffect(() => {
+    setMinecraftUsername(detail?.minecraftUsername ?? "");
+  }, [detail?.id, detail?.minecraftUsername]);
 
   return (
     <div className="relative">
@@ -728,6 +791,52 @@ function UsersTab({
                 <dd>{detail.notificationsMuted ? "All muted" : "Enabled"}</dd>
               </div>
             </dl>
+            <div className="mt-6 border-t border-border pt-6">
+              <h3 className="text-sm font-bold">Minecraft username</h3>
+              <p className="mt-1 text-xs text-muted">
+                Updates the linked in-game name for this server. Must be unique per server.
+              </p>
+              <input
+                type="text"
+                value={minecraftUsername}
+                onChange={(e) => setMinecraftUsername(e.target.value)}
+                placeholder="Minecraft username"
+                maxLength={16}
+                className="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <Button
+                className="mt-3"
+                size="sm"
+                variant="secondary"
+                disabled={
+                  !minecraftUsername.trim() ||
+                  minecraftUsername.trim().toLowerCase() ===
+                    (detail.minecraftUsername ?? "").toLowerCase()
+                }
+                onClick={() =>
+                  openConfirm({
+                    title: "Change Minecraft username",
+                    description: `Set to ${minecraftUsername.trim()}`,
+                    onConfirm: (note) =>
+                      runAction(async () => {
+                        const res = await adminSetMinecraftUsername(
+                          detail.id,
+                          minecraftUsername,
+                          note,
+                        );
+                        if (res.ok) {
+                          setDetailId(null);
+                        }
+                        return res;
+                      }),
+                  })
+                }
+              >
+                Save username
+              </Button>
+            </div>
             <div className="mt-6 border-t border-border pt-6">
               <h3 className="text-sm font-bold">Notifications</h3>
               <p className="mt-1 text-xs text-muted">

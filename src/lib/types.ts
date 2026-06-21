@@ -50,7 +50,10 @@ export type NotificationType =
   | "account_suspended"
   | "account_unsuspended"
   | "referral_bonus_received"
-  | "referral_bonus_earned";
+  | "referral_bonus_earned"
+  | "spectator_bet_won"
+  | "spectator_bet_lost"
+  | "spectator_bet_refunded";
 
 export interface AppNotification {
   id: string;
@@ -122,6 +125,42 @@ export interface User {
 
 export type FightHypeTag = "high_stakes" | "rivalry" | "ranked" | "disputed";
 
+export type SpectatorBettingStatusUi =
+  | "closed"
+  | "open"
+  | "locked"
+  | "settled"
+  | "refunded";
+
+export interface SpectatorPoolSummary {
+  fightId: string;
+  playerAId: string;
+  playerBId: string;
+  playerAName: string;
+  playerBName: string;
+  enabled: boolean;
+  status: SpectatorBettingStatusUi;
+  closesAt: string;
+  poolA: number;
+  poolB: number;
+  totalPool: number;
+  poolAPercent: number;
+  poolBPercent: number;
+  betCount: number;
+  bothSidesHaveLiquidity: boolean;
+  feePercent: number;
+  canBet: boolean;
+  userHasPendingBetOnA?: boolean;
+  userHasPendingBetOnB?: boolean;
+  userBet: {
+    amount: number;
+    side: "a" | "b";
+    selectedFighterId: string;
+    status?: "pending" | "won" | "lost" | "refunded";
+    payoutAmount?: number | null;
+  } | null;
+}
+
 export interface Fight {
   id: string;
   /** Sequential display number (database autoincrement). */
@@ -142,6 +181,7 @@ export interface Fight {
   round?: number;
   arenaName?: string;
   fightLocation?: string;
+  spectatorPool?: SpectatorPoolSummary;
 }
 
 export interface TrendingFighter {

@@ -10,6 +10,7 @@ import { formatFightDisplayId } from "@/lib/fight-display";
 import { prisma } from "@/lib/prisma";
 import { getScopedServerId } from "@/server/scope";
 import { payoutFightWinner, refundFightEscrow } from "@/server/fight-payout";
+import { refundSpectatorPool } from "@/server/spectator-betting";
 import { notifyFightResolved } from "@/server/notifications";
 
 export type AdminFightAction =
@@ -64,6 +65,7 @@ export async function adminFightAction(
         where: { id: fightId },
         data: { status: FightStatus.CANCELLED },
       });
+      await refundSpectatorPool(fightId).catch(() => {});
       await logAdminAction({
         adminId: admin.id,
         action: AdminAuditAction.FIGHT_CANCELLED,

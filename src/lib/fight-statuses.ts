@@ -47,11 +47,47 @@ export const ACTIVE_FIGHT_STATUSES: DbFightStatus[] = [
 ];
 
 export const REPORTABLE_FIGHT_STATUSES: DbFightStatus[] = [
+  DbFightStatus.IN_PROGRESS,
+  DbFightStatus.AWAITING_RESULT,
+];
+
+/** Fights waiting for scheduled time that fighters may mutually start early. */
+export const EARLY_STARTABLE_FIGHT_STATUSES: DbFightStatus[] = [
+  DbFightStatus.CONFIRMED,
+  DbFightStatus.SCHEDULED,
+];
+
+/** UI statuses where fighters may see the result confirmation section. */
+export const RESULT_CONFIRMATION_VISIBLE_STATUSES: DbFightStatus[] = [
   DbFightStatus.CONFIRMED,
   DbFightStatus.SCHEDULED,
   DbFightStatus.IN_PROGRESS,
   DbFightStatus.AWAITING_RESULT,
 ];
+
+export function fightHasStartedForReporting(fight: {
+  status: DbFightStatus;
+  scheduledAt: Date;
+}): boolean {
+  if (
+    fight.status === DbFightStatus.IN_PROGRESS ||
+    fight.status === DbFightStatus.AWAITING_RESULT
+  ) {
+    return true;
+  }
+  return fight.scheduledAt.getTime() <= Date.now();
+}
+
+export function canAgreeToStartFightEarly(fight: {
+  status: DbFightStatus;
+  scheduledAt: Date;
+  playerAId: string | null;
+  playerBId: string | null;
+}): boolean {
+  if (!fight.playerAId || !fight.playerBId) return false;
+  if (!EARLY_STARTABLE_FIGHT_STATUSES.includes(fight.status)) return false;
+  return fight.scheduledAt.getTime() > Date.now();
+}
 
 /** How long completed fights stay on homepage "Recent Results" / "Biggest Pots". */
 export const HOMEPAGE_COMPLETED_VISIBLE_MS = 60 * 60 * 1000;

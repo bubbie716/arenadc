@@ -7,8 +7,8 @@ const APEX_HOSTS = new Set(["arenamc.xyz", "www.arenamc.xyz"]);
 /** True for apex domain (hub), false for dc/sc/sw arena subdomains. */
 export function isHubHost(host: string): boolean {
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
-  // Dev: localhost = hub; 127.0.0.1 = DC arena (see getArenaOrigin).
-  if (process.env.NODE_ENV === "development" && hostname === "localhost") {
+  // Dev: localhost = DC arena; 127.0.0.1 = hub (see getArenaOrigin).
+  if (process.env.NODE_ENV === "development" && hostname === "127.0.0.1") {
     return true;
   }
   return APEX_HOSTS.has(hostname);
@@ -43,7 +43,7 @@ export function getArenaOrigin(serverId: ServerId): string {
   if (process.env.NODE_ENV === "development") {
     const port = process.env.PORT ?? "3000";
     if (serverId === "dc") {
-      return `http://127.0.0.1:${port}`;
+      return `http://localhost:${port}`;
     }
     return `http://${subdomain}.localhost:${port}`;
   }

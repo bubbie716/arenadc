@@ -2,16 +2,24 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import { AcceptFightPanel } from "@/components/fight/AcceptFightPanel";
+import { EarlyStartPanel } from "@/components/fight/EarlyStartPanel";
 import { FightConfirmation, type FightResultReport } from "@/components/FightConfirmation";
 import { CommunityPick } from "@/components/fight/CommunityPick";
 import { FighterComparison } from "@/components/fight/FighterComparison";
 import { FightTimeline } from "@/components/fight/FightTimeline";
 import { MatchupHero } from "@/components/fight/MatchupHero";
 import { PotShowcase } from "@/components/fight/PotShowcase";
+import { SpectatorPredictionPool } from "@/components/fight/SpectatorPredictionPool";
 import { DisputeEvidence } from "@/components/fight/DisputeEvidence";
 import { FightRecordings } from "@/components/fight/FightRecordings";
 import { RecordingNotice } from "@/components/fight/RecordingNotice";
-import { DISPUTE_EVIDENCE_STATUSES, RESOLVED_FIGHT_STATUSES } from "@/lib/fight-statuses";
+import {
+  canAgreeToStartFightEarly,
+  DISPUTE_EVIDENCE_STATUSES,
+  fightHasStartedForReporting,
+  RESULT_CONFIRMATION_VISIBLE_STATUSES,
+  RESOLVED_FIGHT_STATUSES,
+} from "@/lib/fight-statuses";
 import { FightStatus as DbFightStatus, FightResultType } from "@prisma/client";
 import { getLatestEvidenceByFighter } from "@/server/queries/evidence";
 import { getPlatformFeePercent } from "@/server/platform-settings";
@@ -21,6 +29,7 @@ import { PageShell } from "@/components/PageShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/auth";
 import { getCommunityPickForFight } from "@/server/queries/community-pick";
+import { getSpectatorPoolSummary } from "@/server/queries/spectator-betting";
 import { getFighterStats } from "@/lib/fighter-stats";
 import { getFightLocationLabel } from "@/lib/fight-location";
 import { getFormatLabel, getRulesetLabel } from "@/lib/utils";
@@ -62,13 +71,22 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
   }
 
   const fight = mapFightToUI(fightRow);
-  const [statsA, statsB, communityPick] = await Promise.all([
+  const [statsA, statsB, communityPick, spectatorPool] = await Promise.all([
     getFighterStats(fight.playerA),
     getFighterStats(fight.playerB),
     getCommunityPickForFight(fight.id, session?.user?.dbUserId),
+    getSpectatorPoolSummary(fight.id, session?.user?.dbUserId),
   ]);
   const dbUserId = session?.user?.dbUserId;
   const mcName = session?.user?.minecraftUsername?.toLowerCase();
+
+  const walletBalance =
+    dbUserId != null
+      ? ((await prisma.user.findUnique({
+          where: { id: dbUserId },
+          select: { walletBalance: true },
+        }))?.walletBalance ?? 0)
+      : 0;
 
   const isCreator = dbUserId === fightRow.createdById;
   const isPlayer = dbUserId === fightRow.playerAId || dbUserId === fightRow.playerBId;
@@ -105,6 +123,18 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
     !isCreator &&
     fightRow.opponentMcName?.toLowerCase() === mcName;
 
+  const showEarlyStartPanel =
+    Boolean(dbUserId) &&
+    isPlayer &&
+    canAgreeToStartFightEarly(fightRow) &&
+    !(fightRow.earlyStartPlayerAAt && fightRow.earlyStartPlayerBAt);
+
+  const showResultConfirmation =
+    isPlayer && RESULT_CONFIRMATION_VISIBLE_STATUSES.includes(fightRow.status);
+
+  const canReportResults =
+    showResultConfirmation && fightHasStartedForReporting(fightRow);
+
   const showEvidenceUpload = DISPUTE_EVIDENCE_STATUSES.includes(fightRow.status);
   const showResolvedRecordings = RESOLVED_FIGHT_STATUSES.includes(fightRow.status);
   const shouldLoadEvidence =
@@ -129,6 +159,16 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
       )}
 
       <PotShowcase wagerAmount={fight.wagerAmount} platformFeePercent={platformFeePercent} />
+
+      {spectatorPool && fight.playerB !== "TBD" && (
+        <SpectatorPredictionPool
+          pool={spectatorPool}
+          playerA={fight.playerA}
+          playerB={fight.playerB}
+          isFighter={isPlayer}
+          walletBalance={walletBalance}
+        />
+      )}
 
       <div className="mb-10 grid gap-4 sm:grid-cols-3">
         {[
@@ -163,6 +203,22 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
         />
       )}
 
+      {showEarlyStartPanel &&
+        fightRow.playerAId &&
+        fightRow.playerBId &&
+        dbUserId && (
+          <EarlyStartPanel
+            fightId={fight.id}
+            playerA={fight.playerA}
+            playerB={fight.playerB}
+            playerAId={fightRow.playerAId}
+            playerBId={fightRow.playerBId}
+            currentUserId={dbUserId}
+            earlyStartPlayerAAt={fightRow.earlyStartPlayerAAt?.toISOString() ?? null}
+            earlyStartPlayerBAt={fightRow.earlyStartPlayerBAt?.toISOString() ?? null}
+          />
+        )}
+
       {fight.playerB !== "TBD" && (
         <CommunityPick pick={communityPick} playerA={fight.playerA} playerB={fight.playerB} />
       )}
@@ -194,16 +250,14 @@ export default async function FightDetailPage({ params }: FightDetailPageProps) 
         </div>
       </section>
 
-      {isPlayer &&
-        ["confirmed", "scheduled", "in_progress", "awaiting_result"].includes(
-          fight.status,
-        ) && (
-          <FightConfirmation
-            fightId={fight.id}
-            existingReport={existingReport}
-            isFreeFight={fight.wagerAmount === 0}
-          />
-        )}
+      {showResultConfirmation && (
+        <FightConfirmation
+          fightId={fight.id}
+          existingReport={existingReport}
+          isFreeFight={fight.wagerAmount === 0}
+          canReport={canReportResults}
+        />
+      )}
 
       {showEvidenceUpload && (
         <DisputeEvidence

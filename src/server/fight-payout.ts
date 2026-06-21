@@ -9,6 +9,7 @@ import {
   notifyFightResolved,
   notifyPayoutCompleted,
 } from "@/server/notifications";
+import { refundSpectatorPool, ensureSpectatorPoolSettled } from "@/server/spectator-betting";
 import { getScopedServerId } from "@/server/scope";
 
 export async function refundFightEscrow(fightId: string, adminId?: string) {
@@ -35,6 +36,7 @@ export async function refundFightEscrow(fightId: string, adminId?: string) {
       where: { id: fightId },
       data: { status: FightStatus.REFUNDED },
     });
+    await refundSpectatorPool(fightId).catch(() => {});
     return;
   }
 
@@ -58,6 +60,8 @@ export async function refundFightEscrow(fightId: string, adminId?: string) {
       data: { status: FightStatus.REFUNDED },
     });
   });
+
+  await refundSpectatorPool(fightId).catch(() => {});
 }
 
 export async function payoutFightWinner(
@@ -141,6 +145,8 @@ export async function payoutFightWinner(
       },
     });
   });
+
+  await ensureSpectatorPoolSettled(fightId, winnerId, { adminId: options?.adminId });
 
   if (payout > 0) {
     await notifyPayoutCompleted({

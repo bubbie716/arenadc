@@ -235,3 +235,68 @@ export async function adminSetNotificationsMuted(
     return { ok: false, error: adminErrorMessage(e) };
   }
 }
+
+export async function adminSetMinecraftUsername(
+  userId: string,
+  username: string,
+  note: string,
+): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin();
+    const adminNote = requireAdminNote(note);
+    const serverId = await getScopedServerId();
+
+    const trimmed = username.trim();
+    if (!trimmed || trimmed.length > 16) {
+      return { ok: false, error: "Enter a valid Minecraft username (1–16 characters)." };
+    }
+
+    const target = await prisma.user.findFirst({
+      where: { id: userId, serverId },
+      select: { id: true, minecraftUsername: true },
+    });
+    if (!target) {
+      return { ok: false, error: "User not found." };
+    }
+
+    if (target.minecraftUsername?.toLowerCase() === trimmed.toLowerCase()) {
+      return { ok: false, error: "That is already this user's Minecraft username." };
+    }
+
+    const existing = await prisma.user.findFirst({
+      where: {
+        serverId,
+        minecraftUsername: { equals: trimmed, mode: "insensitive" },
+        NOT: { id: userId },
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      return { ok: false, error: "That Minecraft username is already linked to another account." };
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { minecraftUsername: trimmed },
+    });
+
+    await logAdminAction({
+      adminId: admin.id,
+      action: AdminAuditAction.USER_MINECRAFT_USERNAME_CHANGED,
+      targetType: "user",
+      targetId: userId,
+      note: adminNote,
+      metadata: {
+        previousUsername: target.minecraftUsername,
+        newUsername: trimmed,
+      },
+    });
+
+    revalidatePath("/admin");
+    revalidatePath("/profile");
+    revalidatePath("/schedule");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: adminErrorMessage(e) };
+  }
+}

@@ -6,6 +6,7 @@ import {
 } from "@/lib/fight-statuses";
 import { prisma } from "@/lib/prisma";
 import { repairAllFightDisplayNumbers } from "@/server/fight-display";
+import { getSpectatorPoolSummariesForFights } from "@/server/queries/spectator-betting";
 import { syncPastScheduledFights } from "@/server/fight-status";
 import { getScopedServerId } from "@/server/scope";
 import type { Fight } from "@/lib/types";
@@ -21,7 +22,12 @@ async function loadFights(
     where: { serverId, ...(args.where as object) },
     include: args.include ?? fightInclude,
   });
-  return fights.map(mapFightToUI);
+  const mapped = fights.map(mapFightToUI);
+  const pools = await getSpectatorPoolSummariesForFights(mapped.map((f) => f.id));
+  return mapped.map((fight) => ({
+    ...fight,
+    spectatorPool: pools[fight.id],
+  }));
 }
 
 export async function getFightById(id: string): Promise<Fight | null> {

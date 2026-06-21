@@ -66,5 +66,5 @@ export function withRequestAuthUrl<T>(
 function fallbackAuthOrigin(): string {
   if (process.env.AUTH_URL?.trim()) return process.env.AUTH_URL.trim();
   if (process.env.NEXTAUTH_URL?.trim()) return process.env.NEXTAUTH_URL.trim();
-  return "http://127.0.0.1:3000";
+  return "http://localhost:3000";
 }

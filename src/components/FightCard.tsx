@@ -103,6 +103,40 @@ export function FightCard({ fight, compact, rankedFighters, rivalries }: FightCa
           )}
         </div>
 
+        {fight.spectatorPool?.enabled && fight.playerB !== "TBD" && (
+          <div className="mt-3 rounded-xl border border-border/70 bg-surface-elevated/40 px-3.5 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                  Prediction Pool
+                </p>
+                <p className="text-lg font-black tabular-nums">
+                  {formatMoney(fight.spectatorPool.totalPool, { compact: true })}
+                </p>
+              </div>
+              {fight.spectatorPool.canBet && (
+                <span className="rounded-full bg-success/15 px-2.5 py-1 text-[10px] font-bold uppercase text-success">
+                  Predictions Open
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-surface-elevated">
+              <div
+                className="bg-accent"
+                style={{ width: `${fight.spectatorPool.poolAPercent}%` }}
+              />
+              <div
+                className="bg-blue"
+                style={{ width: `${fight.spectatorPool.poolBPercent}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[11px] text-muted">
+              {fight.playerA} {fight.spectatorPool.poolAPercent}% / {fight.playerB}{" "}
+              {fight.spectatorPool.poolBPercent}%
+            </p>
+          </div>
+        )}
+
         <div
           className={cn(
             "mt-3.5 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 transition-colors",

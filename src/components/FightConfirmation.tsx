@@ -11,6 +11,8 @@ interface FightConfirmationProps {
   fightId: string;
   existingReport?: FightResultReport | null;
   isFreeFight?: boolean;
+  /** When false, buttons are disabled until early start or scheduled time. */
+  canReport?: boolean;
 }
 
 function reportLabels(isFreeFight: boolean): Record<FightResultReport, string> {
@@ -33,6 +35,7 @@ export function FightConfirmation({
   fightId,
   existingReport,
   isFreeFight = false,
+  canReport = true,
 }: FightConfirmationProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -44,7 +47,7 @@ export function FightConfirmation({
   const labels = reportLabels(isFreeFight);
 
   function handleAction(action: FightResultReport) {
-    if (lockedReport) return;
+    if (lockedReport || !canReport) return;
 
     startTransition(async () => {
       setError(null);
@@ -75,19 +78,38 @@ export function FightConfirmation({
   return (
     <section className="mb-8 rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/5 to-surface p-6 transition-all hover:border-accent/40">
       <h2 className="text-xl font-bold">Result Confirmation</h2>
-      <p className="mt-2 text-sm text-muted">
-        {isFreeFight
-          ? "Report your result honestly. Your choice is final once submitted. Disputing a free fight counts as an automatic loss."
-          : "Report your result honestly. Your choice is final once submitted. Instant payout when both fighters agree."}
-      </p>
+      {!canReport ? (
+        <p className="mt-4 rounded-lg bg-surface-elevated px-4 py-3 text-sm text-muted">
+          Result reporting unlocks when both fighters agree to start early, or when the scheduled
+          start time arrives.
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-muted">
+          {isFreeFight
+            ? "Report your result honestly. Your choice is final once submitted. Disputing a free fight counts as an automatic loss."
+            : "Report your result honestly. Your choice is final once submitted. Instant payout when both fighters agree."}
+        </p>
+      )}
       <div className="mt-6 flex flex-wrap gap-3">
-        <Button variant="success" disabled={pending} onClick={() => handleAction("won")}>
+        <Button
+          variant="success"
+          disabled={pending || !canReport}
+          onClick={() => handleAction("won")}
+        >
           I Won
         </Button>
-        <Button variant="secondary" disabled={pending} onClick={() => handleAction("lost")}>
+        <Button
+          variant="secondary"
+          disabled={pending || !canReport}
+          onClick={() => handleAction("lost")}
+        >
           I Lost
         </Button>
-        <Button variant="danger" disabled={pending} onClick={() => handleAction("dispute")}>
+        <Button
+          variant="danger"
+          disabled={pending || !canReport}
+          onClick={() => handleAction("dispute")}
+        >
           Dispute
         </Button>
       </div>

@@ -162,6 +162,52 @@ export async function notifyPayoutCompleted(params: {
   });
 }
 
+export async function notifySpectatorBetOutcomes(params: {
+  fightId: string;
+  fightNumber: number;
+  outcomes: {
+    userId: string;
+    kind: "won" | "lost" | "refunded";
+    amount: number;
+    payout?: number;
+  }[];
+}) {
+  if (params.outcomes.length === 0) return;
+
+  const config = await getActiveServerConfig();
+  const label = await fightLabel(params.fightNumber);
+
+  await createNotifications(
+    params.outcomes.map((outcome) => {
+      if (outcome.kind === "won") {
+        return {
+          userId: outcome.userId,
+          type: NotificationType.SPECTATOR_BET_WON,
+          title: "Prediction pool win",
+          message: `You won ${formatCurrency(outcome.payout ?? 0, config)} on ${label}.`,
+          relatedFightId: params.fightId,
+        };
+      }
+      if (outcome.kind === "lost") {
+        return {
+          userId: outcome.userId,
+          type: NotificationType.SPECTATOR_BET_LOST,
+          title: "Prediction pool loss",
+          message: `Your ${formatCurrency(outcome.amount, config)} prediction on ${label} did not win.`,
+          relatedFightId: params.fightId,
+        };
+      }
+      return {
+        userId: outcome.userId,
+        type: NotificationType.SPECTATOR_BET_REFUNDED,
+        title: "Prediction refunded",
+        message: `Your ${formatCurrency(outcome.amount, config)} prediction on ${label} was refunded.`,
+        relatedFightId: params.fightId,
+      };
+    }),
+  );
+}
+
 export async function getNotificationsForUser(
   userId: string,
   limit = 20,
