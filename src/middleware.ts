@@ -4,7 +4,9 @@ import type { NextRequest } from "next/server";
 import {
   ARENA_ONLY_PREFIXES,
   HUB_HOST_MODE_HEADER,
+  getHubOrigin,
   isHubHost,
+  isRetiredArenaHost,
 } from "@/lib/host-mode";
 import {
   isServerId,
@@ -43,6 +45,10 @@ function applyHubContext(res: NextResponse) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const host = req.headers.get("host") ?? "";
+
+  if (isRetiredArenaHost(host)) {
+    return NextResponse.redirect(getHubOrigin());
+  }
 
   if (isHubHost(host)) {
     const isArenaRoute = ARENA_ONLY_PREFIXES.some((p) => pathname.startsWith(p));

@@ -8,6 +8,7 @@ import {
   validateCustomReferralCode,
 } from "@/lib/referral-code";
 import type { ServerId } from "@/lib/server-config";
+import { serverRequiresMinecraftCoordinateVerification } from "@/lib/minecraft-verification";
 import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { prisma } from "@/lib/prisma";
 import { notifyReferralRedemption } from "@/server/notifications/referrals";
@@ -291,6 +292,7 @@ export async function completeOnboardingWithReferral(
       where: { id: userId },
       select: {
         minecraftUsername: true,
+        minecraftVerifiedAt: true,
         rulesAcceptedAt: true,
         onboardingComplete: true,
       },
@@ -298,6 +300,10 @@ export async function completeOnboardingWithReferral(
 
     if (!user.minecraftUsername) {
       throw new ReferralError("Link your Minecraft username first.");
+    }
+
+    if (serverRequiresMinecraftCoordinateVerification(serverId) && !user.minecraftVerifiedAt) {
+      throw new ReferralError("Verify your Minecraft account in-game first.");
     }
     if (!user.rulesAcceptedAt) {
       throw new ReferralError("Accept all legal agreements first.");

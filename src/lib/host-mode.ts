@@ -1,17 +1,40 @@
-import { getServerConfig, isServerId, SERVER_IDS, type ServerId } from "@/lib/server-config";
+import {
+  DEFAULT_SERVER_ID,
+  getServerConfig,
+  isServerId,
+  SERVER_IDS,
+  type ServerId,
+} from "@/lib/server-config";
 
 export const HUB_HOST_MODE_HEADER = "x-arenamc-host-mode";
 
 const APEX_HOSTS = new Set(["arenamc.xyz", "www.arenamc.xyz"]);
 
+/** Retired arena hosts still covered by *.arenamc.xyz — send them to the hub. */
+const RETIRED_ARENA_SUBDOMAINS = new Set(["dc", "sc", "sw", "swc"]);
+
 /** True for apex domain (hub), false for arena subdomains. */
 export function isHubHost(host: string): boolean {
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
-  // Dev: localhost = DC arena; 127.0.0.1 = hub (see getArenaOrigin).
+  // Dev: localhost = default arena; 127.0.0.1 = hub (see getArenaOrigin).
   if (process.env.NODE_ENV === "development" && hostname === "127.0.0.1") {
     return true;
   }
   return APEX_HOSTS.has(hostname);
+}
+
+export function isRetiredArenaHost(host: string): boolean {
+  const hostname = host.split(":")[0]?.toLowerCase() ?? "";
+  const sub = hostname.split(".")[0];
+  return Boolean(sub && RETIRED_ARENA_SUBDOMAINS.has(sub));
+}
+
+export function getHubOrigin(): string {
+  if (process.env.NODE_ENV === "development") {
+    const port = process.env.PORT ?? "3000";
+    return `http://127.0.0.1:${port}`;
+  }
+  return "https://arenamc.xyz";
 }
 
 export function isArenaSubdomainHost(host: string): boolean {
@@ -42,7 +65,7 @@ export function getArenaOrigin(serverId: ServerId): string {
 
   if (process.env.NODE_ENV === "development") {
     const port = process.env.PORT ?? "3000";
-    if (serverId === "dc") {
+    if (serverId === DEFAULT_SERVER_ID) {
       return `http://localhost:${port}`;
     }
     return `http://${subdomain}.localhost:${port}`;

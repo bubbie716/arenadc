@@ -139,7 +139,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: null,
             image: null,
             dbUserId: "",
-            serverId: serverId ?? "dc",
+            serverId: serverId ?? "crp",
             onboardingComplete: false,
             minecraftUsername: null,
             isAdmin: false,

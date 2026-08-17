@@ -96,6 +96,13 @@ enum CommunityPickSide {
   PLAYER_B
 }
 
+enum MinecraftChallengeStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  REPLACED
+}
+
 enum NotificationType {
   FIGHT_INVITE
   OPEN_CHALLENGE_ACCEPTED
@@ -131,6 +138,10 @@ model User {
   discordId               String
   discordUsername         String
   minecraftUsername       String?
+  /// Formal Minecraft UUID from live-map verification (DistrictRP).
+  minecraftUuid           String?
+  /// Set only after successful coordinate verification.
+  minecraftVerifiedAt     DateTime?
   avatarUrl               String?
   rulesAcceptedAt         DateTime?
   onboardingComplete      Boolean   @default(false)
@@ -161,12 +172,40 @@ model User {
   communityVotes      FightCommunityVote[]
   spectatorBets       SpectatorBet[]
   referralsMade       ReferralRedemption[] @relation("ReferralReferrer")
-  referralReceived    ReferralRedemption?  @relation("ReferralReferred")
+  referralReceived                ReferralRedemption?                @relation("ReferralReferred")
+  minecraftVerificationChallenges MinecraftVerificationChallenge[]
 
   @@unique([serverId, discordId])
   @@unique([serverId, minecraftUsername])
+  @@unique([serverId, minecraftUuid])
   @@unique([serverId, referralCode])
   @@index([serverId])
+  @@index([minecraftVerifiedAt])
+}
+
+model MinecraftVerificationChallenge {
+  id                String                   @id @default(cuid())
+  serverId          String
+  userId            String
+  claimedUsername   String
+  targetWorld       String                   @default("world")
+  targetX           Int
+  targetZ           Int
+  status            MinecraftChallengeStatus @default(PENDING)
+  expiresAt         DateTime
+  attemptCount      Int                      @default(0)
+  regenerationCount Int                      @default(0)
+  lastCheckedAt     DateTime?
+  verifiedAt        DateTime?
+  replacedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, userId, status])
+  @@index([expiresAt])
+  @@index([userId, createdAt])
 }
 
 model ReferralRedemption {

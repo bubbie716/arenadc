@@ -1,6 +1,6 @@
-export type ServerId = "dc" | "sc" | "sw" | "crp" | "drp";
+export type ServerId = "crp" | "drp";
 
-/** Government-style consent rules (DC, SC). Government without /police consent (CRP, DRP). Open-world (SW). */
+/** Government without /police consent (CRP, DRP). */
 export type RulesetKind = "government" | "government_no_police" | "openworld";
 
 export type ServerConfig = {
@@ -11,59 +11,19 @@ export type ServerConfig = {
   currencyName: string;
   currencySymbol: string;
   subdomain: string;
-  /** Hub card / branding (e.g. ArenaSW). */
+  /** Hub card / branding (e.g. ArenaCRP). */
   arenaBrandName: string;
-  /** In-game account that receives deposits (may differ from brand on SW). */
+  /** In-game account that receives deposits. */
   depositAccountName: string;
   legalServerName: string;
   rulesetKind: RulesetKind;
-  /** Public fight code prefix (e.g. ArenaDC-0001). */
+  /** Public fight code prefix (e.g. ArenaCRP-0001). */
   fightIdPrefix: string;
+  /** Require live-map coordinate verification to link Minecraft (DistrictRP only). */
+  minecraftCoordinateVerification: boolean;
 };
 
 export const SERVER_CONFIG: Record<ServerId, ServerConfig> = {
-  dc: {
-    id: "dc",
-    code: "dc",
-    name: "DemocracyCraft",
-    currencyCode: "RMD",
-    currencyName: "Redmont Dollars",
-    currencySymbol: "$",
-    subdomain: "dc",
-    arenaBrandName: "ArenaDC",
-    depositAccountName: "ArenaDC",
-    legalServerName: "DemocracyCraft",
-    rulesetKind: "government",
-    fightIdPrefix: "ArenaDC",
-  },
-  sc: {
-    id: "sc",
-    code: "sc",
-    name: "StateCraft",
-    currencyCode: "ALP",
-    currencyName: "Alexandrian Pounds",
-    currencySymbol: "£",
-    subdomain: "sc",
-    arenaBrandName: "ArenaSC",
-    depositAccountName: "ArenaSC",
-    legalServerName: "StateCraft",
-    rulesetKind: "government",
-    fightIdPrefix: "ArenaSC",
-  },
-  sw: {
-    id: "sw",
-    code: "sw",
-    name: "Stoneworks",
-    currencyCode: "SWC",
-    currencyName: "Stoneworks Coins",
-    currencySymbol: "$",
-    subdomain: "sw",
-    arenaBrandName: "ArenaSW",
-    depositAccountName: "123lucas11",
-    legalServerName: "Stoneworks",
-    rulesetKind: "openworld",
-    fightIdPrefix: "ArenaSW",
-  },
   crp: {
     id: "crp",
     code: "crp",
@@ -77,6 +37,7 @@ export const SERVER_CONFIG: Record<ServerId, ServerConfig> = {
     legalServerName: "CityRP",
     rulesetKind: "government_no_police",
     fightIdPrefix: "ArenaCRP",
+    minecraftCoordinateVerification: false,
   },
   drp: {
     id: "drp",
@@ -91,12 +52,13 @@ export const SERVER_CONFIG: Record<ServerId, ServerConfig> = {
     legalServerName: "DistrictRP",
     rulesetKind: "government_no_police",
     fightIdPrefix: "ArenaDRP",
+    minecraftCoordinateVerification: true,
   },
 };
 
 export const SERVER_IDS = Object.keys(SERVER_CONFIG) as ServerId[];
 
-export const DEFAULT_SERVER_ID: ServerId = "dc";
+export const DEFAULT_SERVER_ID: ServerId = "crp";
 
 export function isServerId(value: string): value is ServerId {
   return value in SERVER_CONFIG;
@@ -107,7 +69,7 @@ function isPlainLocalHost(host: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1";
 }
 
-/** Resolve server id from hostname (e.g. dc.arenamc.xyz → dc). */
+/** Resolve server id from hostname (e.g. crp.arenamc.xyz → crp). */
 export function resolveServerIdFromHost(host: string): ServerId {
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
 
@@ -127,7 +89,7 @@ export function resolveServerIdFromHost(host: string): ServerId {
 
 /**
  * Dev-only: on plain localhost/127.0.0.1, honor ?server= or arenamc-server-id cookie
- * (Safari often cannot resolve sw.localhost — use localhost:3000?server=sw instead).
+ * (Safari often cannot resolve crp.localhost — use localhost:3000?server=crp instead).
  */
 export function resolveServerIdForRequest(options: {
   host: string;

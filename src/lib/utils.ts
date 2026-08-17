@@ -31,7 +31,7 @@ export function formatCurrency(
 }
 
 /** @deprecated Use formatCurrency(amount, config) with server config. */
-export function formatRmd(amount: number, compact = false, serverId: ServerId = "dc"): string {
+export function formatRmd(amount: number, compact = false, serverId: ServerId = "crp"): string {
   return formatCurrency(amount, getServerConfig(serverId), { compact });
 }
 

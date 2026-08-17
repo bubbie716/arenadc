@@ -7,6 +7,7 @@ import {
   acceptLegalAgreements,
   completeOnboarding,
   linkMinecraftUsername,
+  type MinecraftChallengeView,
 } from "@/actions/onboarding";
 import {
   allLegalAgreementsAccepted,
@@ -15,6 +16,7 @@ import {
   legalAgreementsFromRulesAccepted,
   type LegalAgreementId,
 } from "@/components/onboarding/LegalAgreementsStep";
+import { MinecraftVerificationStep } from "@/components/onboarding/MinecraftVerificationStep";
 import { ArenaMCLogo } from "@/components/ArenaMCLogo";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/Button";
@@ -39,8 +41,11 @@ interface OnboardingClientProps {
   initial: {
     discordConnected: boolean;
     minecraftUsername: string | null;
+    minecraftVerified: boolean;
     rulesAccepted: boolean;
     onboardingComplete: boolean;
+    requiresCoordinateVerification: boolean;
+    minecraftChallenge: MinecraftChallengeView | null;
     referralsEnabled: boolean;
     referralNewUserBonus: number;
     referralReferrerBonus: number;
@@ -68,6 +73,7 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
   const discordConnected = Boolean(session?.user?.dbUserId) || state.discordConnected;
   const allLegalAccepted =
     state.rulesAccepted || allLegalAgreementsAccepted(legalAccepted);
+  const minecraftStepComplete = state.minecraftVerified;
 
   useEffect(() => {
     const refFromUrl = searchParams.get("ref");
@@ -113,14 +119,18 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
   return (
     <PageShell
       title="Get Started"
-      description="Connect Discord, link your Minecraft username, and accept our legal agreements."
+      description={
+        state.requiresCoordinateVerification
+          ? "Connect Discord, verify your Minecraft account in-game, and accept our legal agreements."
+          : "Connect Discord, link your Minecraft username, and accept our legal agreements."
+      }
       maxWidth="lg"
     >
       <div className="mb-8 flex gap-2 overflow-x-auto pb-2">
         {STEPS.map((s) => {
           const done =
             (s.id === 1 && discordConnected) ||
-            (s.id === 2 && Boolean(state.minecraftUsername)) ||
+            (s.id === 2 && minecraftStepComplete) ||
             (s.id === 3 && state.rulesAccepted) ||
             (s.id === 4 && state.onboardingComplete);
           return (
@@ -200,7 +210,24 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
           </>
         )}
 
-        {currentStep === 2 && (
+        {currentStep === 2 && state.requiresCoordinateVerification && (
+          <MinecraftVerificationStep
+            legalServerName={legalServerName}
+            initialUsername={state.minecraftUsername}
+            initialChallenge={state.minecraftChallenge}
+            minecraftVerified={state.minecraftVerified}
+            onVerified={(username) => {
+              setState((s) => ({
+                ...s,
+                minecraftUsername: username,
+                minecraftVerified: true,
+              }));
+              goToStep(3);
+            }}
+          />
+        )}
+
+        {currentStep === 2 && !state.requiresCoordinateVerification && (
           <>
             <h2 className="text-2xl font-bold">Link Minecraft Username</h2>
             <p className="mt-3 text-muted">
@@ -223,7 +250,11 @@ export function OnboardingClient({ initial }: OnboardingClientProps) {
                   const res = await linkMinecraftUsername(minecraftName);
                   if (!res.ok) setError(res.error);
                   else {
-                    setState((s) => ({ ...s, minecraftUsername: minecraftName.trim() }));
+                    setState((s) => ({
+                      ...s,
+                      minecraftUsername: minecraftName.trim(),
+                      minecraftVerified: true,
+                    }));
                     goToStep(3);
                   }
                 })
