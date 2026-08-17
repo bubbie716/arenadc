@@ -1,0 +1,438 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FightStatus {
+  DRAFT
+  PENDING_ACCEPTANCE
+  OPEN
+  CONFIRMED
+  SCHEDULED
+  IN_PROGRESS
+  AWAITING_RESULT
+  AWAITING_RECORDINGS
+  DISPUTED
+  COMPLETED
+  DECLINED
+  CANCELLED
+  REFUNDED
+}
+
+enum EscrowStatus {
+  LOCKED
+  RELEASED
+  REFUNDED
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  WITHDRAWAL_LOCK
+  WITHDRAWAL_PAID
+  WITHDRAWAL_RELEASE
+  ESCROW_LOCK
+  ESCROW_RELEASE
+  PAYOUT
+  PLATFORM_FEE
+  WAGER_LOSS
+  REFUND
+  ADMIN_ADJUSTMENT
+  REFERRAL_BONUS
+  WITHDRAW
+  FEE
+  SPECTATOR_BET_LOCK
+  SPECTATOR_BET_PAYOUT
+  SPECTATOR_BET_REFUND
+  SPECTATOR_POOL_FEE
+}
+
+enum SpectatorBetStatus {
+  PENDING
+  WON
+  LOST
+  REFUNDED
+  CANCELLED
+}
+
+enum SpectatorBettingStatus {
+  CLOSED
+  OPEN
+  LOCKED
+  SETTLED
+  REFUNDED
+}
+
+enum DepositRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WithdrawRequestStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum FightResultType {
+  WIN
+  LOSS
+  DISPUTE
+}
+
+enum EvidenceSubmissionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum CommunityPickSide {
+  PLAYER_A
+  PLAYER_B
+}
+
+enum NotificationType {
+  FIGHT_INVITE
+  OPEN_CHALLENGE_ACCEPTED
+  FIGHT_ACCEPTED
+  FIGHT_DECLINED
+  FIGHT_DISPUTED
+  EVIDENCE_UPLOADED
+  FIGHT_RESOLVED
+  PAYOUT_COMPLETED
+  DEPOSIT_APPROVED
+  DEPOSIT_REJECTED
+  WITHDRAWAL_PAID
+  WITHDRAWAL_REJECTED
+  WITHDRAWAL_REQUESTED
+  DEPOSIT_REQUESTED
+  DEPOSIT_SUBMITTED
+  WITHDRAWAL_SUBMITTED
+  ADMIN_BALANCE_ADJUSTMENT
+  WALLET_FROZEN
+  WALLET_UNFROZEN
+  ACCOUNT_SUSPENDED
+  ACCOUNT_UNSUSPENDED
+  REFERRAL_BONUS_RECEIVED
+  REFERRAL_BONUS_EARNED
+  SPECTATOR_BET_WON
+  SPECTATOR_BET_LOST
+  SPECTATOR_BET_REFUNDED
+}
+
+model User {
+  id                      String    @id @default(cuid())
+  serverId                String    @default("dc")
+  discordId               String
+  discordUsername         String
+  minecraftUsername       String?
+  avatarUrl               String?
+  rulesAcceptedAt         DateTime?
+  onboardingComplete      Boolean   @default(false)
+  walletBalance           Int       @default(0)
+  isAdmin                 Boolean   @default(false)
+  walletFrozen            Boolean   @default(false)
+  suspendedAt             DateTime?
+  notificationsMuted      Boolean   @default(false)
+  referralCode            String?
+  referralCodeLockedUntil DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  createdFights       Fight[]              @relation("FightCreator")
+  depositRequests     DepositRequest[]
+  withdrawRequests    WithdrawRequest[]
+  adminAuditLogs      AdminAuditLog[]      @relation("AdminAuditActor")
+  depositReviews      DepositRequest[]     @relation("DepositReviewer")
+  withdrawReviews     WithdrawRequest[]    @relation("WithdrawReviewer")
+  fightsAsPlayerA     Fight[]              @relation("FightPlayerA")
+  fightsAsPlayerB     Fight[]              @relation("FightPlayerB")
+  escrows             Escrow[]
+  walletTransactions  WalletTransaction[]
+  fightResults        FightResult[]
+  evidenceSubmissions EvidenceSubmission[] @relation("EvidenceSubmitter")
+  evidenceReviews     EvidenceSubmission[] @relation("EvidenceReviewer")
+  notifications       Notification[]
+  communityVotes      FightCommunityVote[]
+  spectatorBets       SpectatorBet[]
+  referralsMade       ReferralRedemption[] @relation("ReferralReferrer")
+  referralReceived    ReferralRedemption?  @relation("ReferralReferred")
+
+  @@unique([serverId, discordId])
+  @@unique([serverId, minecraftUsername])
+  @@unique([serverId, referralCode])
+  @@index([serverId])
+}
+
+model ReferralRedemption {
+  id             String   @id @default(cuid())
+  serverId       String
+  referrerId     String
+  referrer       User     @relation("ReferralReferrer", fields: [referrerId], references: [id])
+  referredUserId String   @unique
+  referredUser   User     @relation("ReferralReferred", fields: [referredUserId], references: [id])
+  newUserBonus   Int
+  referrerBonus  Int
+  createdAt      DateTime @default(now())
+
+  @@index([serverId])
+  @@index([referrerId])
+}
+
+model Arena {
+  id          String  @id @default(cuid())
+  serverId    String  @default("dc")
+  slug        String
+  name        String
+  description String
+  approved    Boolean @default(true)
+  fights      Fight[]
+
+  @@unique([serverId, slug])
+  @@index([serverId])
+}
+
+model Fight {
+  id              String      @id @default(cuid())
+  serverId        String      @default("dc")
+  fightNumber     Int         @default(autoincrement())
+  createdById     String
+  createdBy       User        @relation("FightCreator", fields: [createdById], references: [id])
+  opponentMcName  String?
+  playerAId       String?
+  playerA         User?       @relation("FightPlayerA", fields: [playerAId], references: [id])
+  playerBId       String?
+  playerB         User?       @relation("FightPlayerB", fields: [playerBId], references: [id])
+  isOpenChallenge Boolean     @default(false)
+  ruleset         String
+  format          String
+  arenaId         String
+  arena           Arena       @relation(fields: [arenaId], references: [id])
+  fightLocation   String?
+  scheduledAt     DateTime
+  wagerAmount     Int
+  status          FightStatus @default(DRAFT)
+  winnerId        String?
+  completedAt     DateTime?
+  round           Int?
+  earlyStartPlayerAAt DateTime?
+  earlyStartPlayerBAt DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  escrows             Escrow[]
+  walletTransactions  WalletTransaction[]
+  results             FightResult[]
+  evidenceSubmissions EvidenceSubmission[]
+  notifications       Notification[]
+  communityVotes      FightCommunityVote[]
+  spectatorBets       SpectatorBet[]
+
+  spectatorBettingEnabled   Boolean               @default(false)
+  spectatorBettingClosesAt    DateTime?
+  spectatorPoolFeePercent     Float                 @default(0.08)
+  spectatorPoolsSettledAt     DateTime?
+  spectatorBettingStatus      SpectatorBettingStatus @default(CLOSED)
+
+  @@unique([serverId, fightNumber])
+  @@index([serverId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model Escrow {
+  id        String       @id @default(cuid())
+  fightId   String
+  fight     Fight        @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  amount    Int
+  status    EscrowStatus @default(LOCKED)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([fightId, userId])
+}
+
+model WalletTransaction {
+  id                String                @id @default(cuid())
+  serverId          String                @default("dc")
+  userId            String
+  user              User                  @relation(fields: [userId], references: [id])
+  type              WalletTransactionType
+  amount            Int
+  description       String
+  fightId           String?
+  fight             Fight?                @relation(fields: [fightId], references: [id])
+  depositRequestId  String?
+  depositRequest    DepositRequest?       @relation(fields: [depositRequestId], references: [id])
+  withdrawRequestId String?
+  withdrawRequest   WithdrawRequest?      @relation(fields: [withdrawRequestId], references: [id])
+  createdById       String?
+  createdAt         DateTime              @default(now())
+
+  @@index([serverId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+}
+
+model DepositRequest {
+  id                 String               @id @default(cuid())
+  serverId           String               @default("dc")
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id])
+  amount             Int
+  proofImageUrl      String
+  note               String?
+  status             DepositRequestStatus @default(PENDING)
+  adminNote          String?
+  reviewedById       String?
+  reviewedBy         User?                @relation("DepositReviewer", fields: [reviewedById], references: [id])
+  reviewedAt         DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  walletTransactions WalletTransaction[]
+
+  @@index([serverId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+model WithdrawRequest {
+  id                 String                @id @default(cuid())
+  serverId           String                @default("dc")
+  userId             String
+  user               User                  @relation(fields: [userId], references: [id])
+  amount             Int
+  minecraftUsername  String
+  note               String?
+  status             WithdrawRequestStatus @default(PENDING)
+  adminNote          String?
+  reviewedById       String?
+  reviewedBy         User?                 @relation("WithdrawReviewer", fields: [reviewedById], references: [id])
+  reviewedAt         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  walletTransactions WalletTransaction[]
+
+  @@index([serverId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  serverId     String   @default("dc")
+  adminId      String
+  admin        User     @relation("AdminAuditActor", fields: [adminId], references: [id])
+  action       String
+  targetType   String
+  targetId     String?
+  note         String?
+  metadataJson String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([serverId])
+  @@index([createdAt(sort: Desc)])
+  @@index([adminId])
+  @@index([targetType, targetId])
+}
+
+model PlatformSetting {
+  serverId    String   @default("dc")
+  key         String
+  value       String
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@id([serverId, key])
+}
+
+model FightResult {
+  id           String          @id @default(cuid())
+  fightId      String
+  fight        Fight           @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  reportedById String
+  reportedBy   User            @relation(fields: [reportedById], references: [id])
+  type         FightResultType
+  createdAt    DateTime        @default(now())
+
+  @@unique([fightId, reportedById])
+}
+
+model EvidenceSubmission {
+  id           String                   @id @default(cuid())
+  serverId     String                   @default("dc")
+  fightId      String
+  fight        Fight                    @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  uploaderId   String
+  uploader     User                     @relation("EvidenceSubmitter", fields: [uploaderId], references: [id])
+  proofUrl     String
+  notes        String?
+  status       EvidenceSubmissionStatus @default(PENDING)
+  createdAt    DateTime                 @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?                    @relation("EvidenceReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([fightId, uploaderId])
+  @@index([serverId])
+  @@index([fightId])
+}
+
+model FightCommunityVote {
+  id        String            @id @default(cuid())
+  fightId   String
+  fight     Fight             @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  side      CommunityPickSide
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([fightId, userId])
+  @@index([fightId])
+}
+
+model SpectatorBet {
+  id                String             @id @default(cuid())
+  serverId          String
+  fightId           String
+  fight             Fight              @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User               @relation(fields: [userId], references: [id])
+  selectedFighterId String
+  amount            Int
+  status            SpectatorBetStatus @default(PENDING)
+  payoutAmount      Int?
+  createdAt         DateTime           @default(now())
+  settledAt         DateTime?
+
+  @@index([serverId])
+  @@index([fightId])
+  @@index([userId])
+  @@index([fightId, status])
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  serverId       String           @default("dc")
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  title          String
+  message        String
+  relatedFightId String?
+  relatedFight   Fight?           @relation(fields: [relatedFightId], references: [id], onDelete: SetNull)
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  @@index([serverId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+}
