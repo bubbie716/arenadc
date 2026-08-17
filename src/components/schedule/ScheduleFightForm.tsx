@@ -22,7 +22,6 @@ import {
   isValidCoordInput,
   validateFightLocationParts,
 } from "@/lib/fight-location";
-import { DC_REGIONS, isDcRegion, type DcRegion } from "@/lib/dc-regions";
 import { DRP_REGIONS, isDrpRegion, type DrpRegion } from "@/lib/drp-regions";
 import type { FormatId, RulesetId } from "@/lib/types";
 import { useServerConfig } from "@/components/providers/ServerConfigProvider";
@@ -52,10 +51,9 @@ export function ScheduleFightForm({
   platformFeePercent,
 }: ScheduleFightFormProps) {
   const config = useServerConfig();
-  const isDcSite = config.id === "dc";
   const isDrpSite = config.id === "drp";
-  const requiresRegion = isDcSite || isDrpSite;
-  const fightLocationRegions = isDcSite ? DC_REGIONS : isDrpSite ? DRP_REGIONS : [];
+  const requiresRegion = isDrpSite;
+  const fightLocationRegions = isDrpSite ? DRP_REGIONS : [];
 
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -67,7 +65,7 @@ export function ScheduleFightForm({
   const [locationX, setLocationX] = useState("");
   const [locationY, setLocationY] = useState("");
   const [locationZ, setLocationZ] = useState("");
-  const [locationRegion, setLocationRegion] = useState<DcRegion | DrpRegion | "">("");
+  const [locationRegion, setLocationRegion] = useState<DrpRegion | "">("");
   const [wager, setWager] = useState(5000);
   const [customWager, setCustomWager] = useState(false);
   const [customWagerInput, setCustomWagerInput] = useState("");
@@ -141,7 +139,7 @@ export function ScheduleFightForm({
   const locationError = validateFightLocationParts(locationX, locationY, locationZ, {
     requireRegion: requiresRegion,
     region: locationRegion,
-    isValidRegion: isDcSite ? isDcRegion : isDrpSite ? isDrpRegion : undefined,
+    isValidRegion: isDrpSite ? isDrpRegion : undefined,
   });
   const fightLocationValue = buildFightLocation(
     locationX,
@@ -379,7 +377,7 @@ export function ScheduleFightForm({
                 </label>
                 <Select
                   value={locationRegion}
-                  onValueChange={(v) => setLocationRegion(v as DcRegion | DrpRegion)}
+                  onValueChange={(v) => setLocationRegion(v as DrpRegion)}
                 >
                   <SelectTrigger id="location-region" className="h-[38px] text-sm">
                     <SelectValue placeholder="Select" />

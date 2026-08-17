@@ -1,16 +1,9 @@
-import { DC_REGIONS, isDcRegion } from "@/lib/dc-regions";
 import { DRP_REGIONS, isDrpRegion } from "@/lib/drp-regions";
 
-const FIGHT_LOCATION_REGIONS = [...DC_REGIONS, ...DRP_REGIONS] as const;
-
-function isFightLocationRegion(value: string): boolean {
-  return isDcRegion(value) || isDrpRegion(value);
-}
-
-/** Minecraft coordinates: X: Y: Z: (trailing colon) or X: Y: Z: Region (DC/DRP). */
+/** Minecraft coordinates: X: Y: Z: (trailing colon) or X: Y: Z: Region (DistrictRP). */
 const FIGHT_LOCATION_PATTERN = /^-?\d+\s*:\s*-?\d+\s*:\s*-?\d+\s*:\s*$/;
 const FIGHT_LOCATION_REGION_PATTERN = new RegExp(
-  `^-?\\d+\\s*:\\s*-?\\d+\\s*:\\s*-?\\d+\\s*:\\s*(${FIGHT_LOCATION_REGIONS.join("|")})\\s*$`,
+  `^-?\\d+\\s*:\\s*-?\\d+\\s*:\\s*-?\\d+\\s*:\\s*(${DRP_REGIONS.join("|")})\\s*$`,
 );
 const COORD_PART_PATTERN = /^-?\d+$/;
 const COORD_INPUT_PATTERN = /^-?\d*$/;
@@ -44,7 +37,7 @@ export function validateFightLocationParts(
   if (options?.requireRegion) {
     const region = options.region?.trim() ?? "";
     if (!region) return "Select a region.";
-    const isValidRegion = options.isValidRegion ?? isFightLocationRegion;
+    const isValidRegion = options.isValidRegion ?? isDrpRegion;
     if (!isValidRegion(region)) return "Select a valid region.";
   }
   return null;
@@ -77,7 +70,7 @@ export function validateFightLocation(
       return "Enter valid coordinates and select a region.";
     }
     const region = trimmed.split(":").map((part) => part.trim()).filter(Boolean).at(-1) ?? "";
-    const isValidRegion = options.isValidRegion ?? isFightLocationRegion;
+    const isValidRegion = options.isValidRegion ?? isDrpRegion;
     if (!isValidRegion(region)) {
       return "Enter valid coordinates and select a region.";
     }
@@ -97,7 +90,7 @@ export function normalizeFightLocation(value: string): string {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 
-  if (parts.length === 4 && isFightLocationRegion(parts[3])) {
+  if (parts.length === 4 && isDrpRegion(parts[3])) {
     return `${parts[0]}: ${parts[1]}: ${parts[2]}: ${parts[3]}`;
   }
 
@@ -118,7 +111,7 @@ function parseFightLocationParts(
   if (parts.length === 3) {
     return { x: parts[0], y: parts[1], z: parts[2] };
   }
-  if (parts.length === 4 && isFightLocationRegion(parts[3])) {
+  if (parts.length === 4 && isDrpRegion(parts[3])) {
     return { x: parts[0], y: parts[1], z: parts[2], region: parts[3] };
   }
   return null;

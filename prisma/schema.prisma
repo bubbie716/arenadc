@@ -134,7 +134,7 @@ enum NotificationType {
 
 model User {
   id                      String    @id @default(cuid())
-  serverId                String    @default("dc")
+  serverId                String    @default("crp")
   discordId               String
   discordUsername         String
   minecraftUsername       String?
@@ -225,7 +225,7 @@ model ReferralRedemption {
 
 model Arena {
   id          String  @id @default(cuid())
-  serverId    String  @default("dc")
+  serverId    String  @default("crp")
   slug        String
   name        String
   description String
@@ -238,7 +238,7 @@ model Arena {
 
 model Fight {
   id              String      @id @default(cuid())
-  serverId        String      @default("dc")
+  serverId        String      @default("crp")
   fightNumber     Int         @default(autoincrement())
   createdById     String
   createdBy       User        @relation("FightCreator", fields: [createdById], references: [id])
@@ -300,7 +300,7 @@ model Escrow {
 
 model WalletTransaction {
   id                String                @id @default(cuid())
-  serverId          String                @default("dc")
+  serverId          String                @default("crp")
   userId            String
   user              User                  @relation(fields: [userId], references: [id])
   type              WalletTransactionType
@@ -322,7 +322,7 @@ model WalletTransaction {
 
 model DepositRequest {
   id                 String               @id @default(cuid())
-  serverId           String               @default("dc")
+  serverId           String               @default("crp")
   userId             String
   user               User                 @relation(fields: [userId], references: [id])
   amount             Int
@@ -344,7 +344,7 @@ model DepositRequest {
 
 model WithdrawRequest {
   id                 String                @id @default(cuid())
-  serverId           String                @default("dc")
+  serverId           String                @default("crp")
   userId             String
   user               User                  @relation(fields: [userId], references: [id])
   amount             Int
@@ -366,7 +366,7 @@ model WithdrawRequest {
 
 model AdminAuditLog {
   id           String   @id @default(cuid())
-  serverId     String   @default("dc")
+  serverId     String   @default("crp")
   adminId      String
   admin        User     @relation("AdminAuditActor", fields: [adminId], references: [id])
   action       String
@@ -383,7 +383,7 @@ model AdminAuditLog {
 }
 
 model PlatformSetting {
-  serverId    String   @default("dc")
+  serverId    String   @default("crp")
   key         String
   value       String
   updatedAt   DateTime @updatedAt
@@ -406,7 +406,7 @@ model FightResult {
 
 model EvidenceSubmission {
   id           String                   @id @default(cuid())
-  serverId     String                   @default("dc")
+  serverId     String                   @default("crp")
   fightId      String
   fight        Fight                    @relation(fields: [fightId], references: [id], onDelete: Cascade)
   uploaderId   String
@@ -460,7 +460,7 @@ model SpectatorBet {
 
 model Notification {
   id             String           @id @default(cuid())
-  serverId       String           @default("dc")
+  serverId       String           @default("crp")
   userId         String
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type           NotificationType

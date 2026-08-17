@@ -1,6 +1,6 @@
 # ArenaMC
 
-DemocracyCraft Minecraft PvP challenge platform — schedule fights, escrow equal RMD wagers, confirm results, and resolve disputes with recordings.
+Minecraft PvP challenge platform — schedule fights, escrow equal wagers, confirm results, and resolve disputes with recordings.
 
 ## Stack
 
@@ -27,9 +27,6 @@ cp .env.example .env
 
    **Discord OAuth redirect URIs** (add every arena host you use):
    - `http://localhost:3000/api/auth/callback/discord`
-   - `https://dc.arenamc.xyz/api/auth/callback/discord`
-   - `https://sc.arenamc.xyz/api/auth/callback/discord`
-   - `https://sw.arenamc.xyz/api/auth/callback/discord`
    - `https://crp.arenamc.xyz/api/auth/callback/discord`
    - `https://drp.arenamc.xyz/api/auth/callback/discord`
 
@@ -49,7 +46,7 @@ npm run dev
 
 ## Auth & onboarding
 
-Discord login returns to the **same subdomain** you started on (`dc` / `sc` / `sw` / `crp` / `drp`). Sessions are host-scoped (separate cookies per subdomain).
+Discord login returns to the **same subdomain** you started on (`crp` / `drp`). Sessions are host-scoped (separate cookies per subdomain).
 
 1. Sign in with Discord at `/onboarding`
 2. Link Minecraft username (unique per account)
@@ -79,22 +76,20 @@ Protected routes redirect to onboarding when incomplete.
 | Role | URL |
 |------|-----|
 | **Hub** (server selector) | `arenamc.xyz` |
-| DemocracyCraft arena | `dc.arenamc.xyz` — RMD ($) |
-| StateCraft arena | `sc.arenamc.xyz` — ALP (£) |
-| Stoneworks arena | `sw.arenamc.xyz` — SWC ($) |
 | CityRP arena | `crp.arenamc.xyz` — CRP ($) |
-| DistrictRP arena | `drp.arenamc.xyz` — FLR (ƒ) |
+| DistrictRP arena | `drp.arenamc.xyz` — NPF (ƒ) |
 
 The apex domain shows a premium hub landing page only. Arena routes (`/schedule`, `/wallet`, etc.) redirect to `/` on the hub.
 
+Retired hosts (`dc`, `sc`, `sw`, `swc`) redirect to the hub.
+
 Local dev:
-- **`http://localhost:3000`** — hub (server selector)
-- **`http://127.0.0.1:3000`** — DC arena app
+- **`http://localhost:3000`** — CityRP arena (default)
+- **`http://127.0.0.1:3000`** — hub (server selector)
 - **`http://127.0.0.1:3000/hub`** — hub on any host
+- **`http://localhost:3000?server=drp`** — switch to DistrictRP locally
 
 Use **`http://`**, not `https://`. Safari may force HTTPS for `arenamc.xyz` (HSTS from production) — use `localhost` instead of `https://arenamc.xyz:3000`.
-
-**Safari / Stoneworks locally:** use `http://127.0.0.1:3000/dev/set-server/sw` or `http://sw.local:3000` (add `127.0.0.1 sw.local` to `/etc/hosts`). Reset to DC: `/dev/set-server/dc`.
 
 **Vercel:** Add wildcard domain `*.arenamc.xyz` (plus apex if needed) on the same project. Subdomain routing is handled in `src/middleware.ts` via `x-arenamc-server-id`.
 

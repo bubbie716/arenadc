@@ -1,6 +1,6 @@
 import { PLATFORM_FEE_PERCENT } from "@/lib/constants";
 import { getActiveServerConfig } from "@/lib/server-context";
-import type { ServerConfig, ServerId } from "@/lib/server-config";
+import type { ServerConfig } from "@/lib/server-config";
 import {
   getPlatformSettings,
   type PlatformSettingsMap,
@@ -21,20 +21,11 @@ export type ResolvedPlatformSettings = {
 
 const DEFAULT_DISCORD_INVITE = "https://discord.gg/arenamc";
 
-/** Pre-123lucas11 SW default stored in PlatformSetting before server-config was updated. */
-const STALE_DEPOSIT_ACCOUNT: Partial<Record<ServerId, string>> = {
-  sw: "ArenaSW",
-};
-
 function resolveDepositAccountName(
   config: ServerConfig,
   stored: string,
 ): string {
   const trimmed = stored.trim();
-  const stale = STALE_DEPOSIT_ACCOUNT[config.id];
-  if (trimmed && stale && trimmed === stale) {
-    return config.depositAccountName;
-  }
   return trimmed || config.depositAccountName;
 }
 
