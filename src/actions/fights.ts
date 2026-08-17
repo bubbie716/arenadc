@@ -25,6 +25,8 @@ import {
 import { postLedgerEntry } from "@/lib/wallet/ledger";
 import { payoutFightWinner, refundFightEscrow } from "@/server/fight-payout";
 import { syncPastScheduledFights, tryFinalizeFightFromResults } from "@/server/fight-status";
+import { isDcRegion } from "@/lib/dc-regions";
+import { isDrpRegion } from "@/lib/drp-regions";
 import { normalizeFightLocation, validateFightLocation } from "@/lib/fight-location";
 import { parseScheduledAtInput } from "@/lib/schedule-datetime";
 import { enableSpectatorBettingForFight, lockSpectatorBettingMarket } from "@/server/spectator-betting";
@@ -76,7 +78,9 @@ export async function createFight(input: {
     }
 
     const locationError = validateFightLocation(input.fightLocation, {
-      requireDcRegion: serverId === "dc",
+      requireRegion: serverId === "dc" || serverId === "drp",
+      isValidRegion:
+        serverId === "dc" ? isDcRegion : serverId === "drp" ? isDrpRegion : undefined,
     });
     if (locationError) {
       return { ok: false, error: locationError };

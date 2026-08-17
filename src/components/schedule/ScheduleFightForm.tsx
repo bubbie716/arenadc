@@ -22,7 +22,8 @@ import {
   isValidCoordInput,
   validateFightLocationParts,
 } from "@/lib/fight-location";
-import { DC_REGIONS, type DcRegion } from "@/lib/dc-regions";
+import { DC_REGIONS, isDcRegion, type DcRegion } from "@/lib/dc-regions";
+import { DRP_REGIONS, isDrpRegion, type DrpRegion } from "@/lib/drp-regions";
 import type { FormatId, RulesetId } from "@/lib/types";
 import { useServerConfig } from "@/components/providers/ServerConfigProvider";
 import {
@@ -52,6 +53,9 @@ export function ScheduleFightForm({
 }: ScheduleFightFormProps) {
   const config = useServerConfig();
   const isDcSite = config.id === "dc";
+  const isDrpSite = config.id === "drp";
+  const requiresRegion = isDcSite || isDrpSite;
+  const fightLocationRegions = isDcSite ? DC_REGIONS : isDrpSite ? DRP_REGIONS : [];
 
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -63,7 +67,7 @@ export function ScheduleFightForm({
   const [locationX, setLocationX] = useState("");
   const [locationY, setLocationY] = useState("");
   const [locationZ, setLocationZ] = useState("");
-  const [locationRegion, setLocationRegion] = useState<DcRegion | "">("");
+  const [locationRegion, setLocationRegion] = useState<DcRegion | DrpRegion | "">("");
   const [wager, setWager] = useState(5000);
   const [customWager, setCustomWager] = useState(false);
   const [customWagerInput, setCustomWagerInput] = useState("");
@@ -135,14 +139,15 @@ export function ScheduleFightForm({
   }
 
   const locationError = validateFightLocationParts(locationX, locationY, locationZ, {
-    requireRegion: isDcSite,
+    requireRegion: requiresRegion,
     region: locationRegion,
+    isValidRegion: isDcSite ? isDcRegion : isDrpSite ? isDrpRegion : undefined,
   });
   const fightLocationValue = buildFightLocation(
     locationX,
     locationY,
     locationZ,
-    isDcSite ? locationRegion : undefined,
+    requiresRegion ? locationRegion : undefined,
   );
 
   const opponentReady = openChallenge || opponentStatus === "valid";
@@ -165,14 +170,14 @@ export function ScheduleFightForm({
         locationX.trim() &&
         locationY.trim() &&
         locationZ.trim() &&
-        (!isDcSite || locationRegion)
+        (!requiresRegion || locationRegion)
           ? formatFightLocationDisplay(fightLocationValue)
           : "—",
       opponent: openChallenge
         ? "Open Challenge"
         : (validatedOpponent ?? opponent) || "—",
     }),
-    [ruleset, format, locationX, locationY, locationZ, locationRegion, isDcSite, fightLocationValue, openChallenge, opponent, validatedOpponent],
+    [ruleset, format, locationX, locationY, locationZ, locationRegion, requiresRegion, fightLocationValue, openChallenge, opponent, validatedOpponent],
   );
 
   const inputClass =
@@ -364,7 +369,7 @@ export function ScheduleFightForm({
                 />
               </div>
             ))}
-            {isDcSite && (
+            {requiresRegion && (
               <div className="min-w-[7.5rem] flex-1 sm:max-w-[9rem]">
                 <label
                   htmlFor="location-region"
@@ -374,13 +379,13 @@ export function ScheduleFightForm({
                 </label>
                 <Select
                   value={locationRegion}
-                  onValueChange={(v) => setLocationRegion(v as DcRegion)}
+                  onValueChange={(v) => setLocationRegion(v as DcRegion | DrpRegion)}
                 >
                   <SelectTrigger id="location-region" className="h-[38px] text-sm">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DC_REGIONS.map((region) => (
+                    {fightLocationRegions.map((region) => (
                       <SelectItem key={region} value={region}>
                         {region}
                       </SelectItem>
@@ -394,7 +399,7 @@ export function ScheduleFightForm({
             (locationX.trim() ||
               locationY.trim() ||
               locationZ.trim() ||
-              (isDcSite && locationRegion)) && (
+              (requiresRegion && locationRegion)) && (
               <p className="mt-2 text-sm text-danger">{locationError}</p>
             )}
         </div>
